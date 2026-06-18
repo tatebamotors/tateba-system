@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>タテバ管理画面</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  :root{--bg:#0e1012;--surface:#161a1e;--card:#1e2228;--border:#2a2f38;--gold:#c9a94b;--gold-dim:#7a6228;--red:#e05252;--green:#4caf7d;--amber:#e09a3a;--text:#e8e4dc;--muted:#7a7f89;--radius:10px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;}
+
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--gold);}
+  .logo span{color:var(--muted);font-size:12px;font-family:'Inter',sans-serif;font-weight:500;letter-spacing:1px;margin-left:8px;}
+  .sync-indicator{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
+  .sync-dot.synced{background:var(--green);}
+  .sync-dot.syncing{background:var(--amber);animation:pulse 1s infinite;}
+  .sync-dot.error{background:var(--red);}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+  .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 20px;background:var(--surface);}
+  .tab{padding:12px 18px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap;position:relative;}
+  .tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+  .tab-badge{position:absolute;top:8px;right:6px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;}
+
+  .page{display:none;}.page.active{display:block;}
+
+  .alert-dash{padding:16px 20px;}
+  .alert-dash-title{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px;}
+  .alert-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+  .alert-stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center;}
+  .alert-stat-num{font-family:'Inter',sans-serif;font-size:28px;font-weight:700;}
+  .alert-stat-num.red{color:var(--red);}
+  .alert-stat-num.amber{color:var(--amber);}
+  .alert-stat-num.gold{color:var(--gold);}
+  .alert-stat-label{font-size:11px;color:var(--muted);margin-top:4px;}
+
+  .alert-list{display:flex;flex-direction:column;gap:8px;}
+  .alert-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color 0.15s;}
+  .alert-item:hover{border-color:var(--gold-dim);}
+  .alert-item.danger{border-left:3px solid var(--red);}
+  .alert-item.warn{border-left:3px solid var(--amber);}
+  .alert-item.soon{border-left:3px solid var(--gold);}
+  .alert-urgency{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;text-align:center;line-height:1.2;white-space:pre-line;}
+  .urgency-danger{background:rgba(224,82,82,0.15);color:var(--red);}
+  .urgency-warn{background:rgba(224,154,58,0.15);color:var(--amber);}
+  .urgency-soon{background:rgba(201,169,75,0.15);color:var(--gold);}
+  .alert-body{flex:1;min-width:0;}
+  .alert-name{font-size:14px;font-weight:700;}
+  .alert-car{font-size:12px;color:var(--muted);margin-top:2px;}
+  .alert-type-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-top:4px;}
+  .badge-shaken{background:rgba(224,82,82,0.15);color:var(--red);}
+  .badge-houten{background:rgba(224,154,58,0.15);color:var(--amber);}
+  .badge-oil{background:rgba(201,169,75,0.15);color:var(--gold);}
+  .alert-right{text-align:right;flex-shrink:0;}
+  .alert-date{font-size:12px;font-family:'Inter',sans-serif;color:var(--muted);}
+  .line-mini-btn{background:rgba(6,199,85,0.15);border:1px solid rgba(6,199,85,0.3);color:#06C755;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-top:6px;display:block;white-space:nowrap;}
+  .empty-alert{text-align:center;padding:40px;color:var(--muted);font-size:14px;}
+
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 20px;}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+  .stat-val{font-family:'Inter',sans-serif;font-size:26px;font-weight:700;}
+  .stat-label{font-size:11px;color:var(--muted);margin-top:4px;}
+
+  .toolbar{padding:0 20px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .search-input{flex:1;min-width:160px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 14px;font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;}
+  .search-input:focus{border-color:var(--gold);}
+  .filter-chip{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;white-space:nowrap;}
+  .filter-chip.active{background:rgba(201,169,75,0.15);border-color:var(--gold);color:var(--gold);font-weight:600;}
+  .primary-btn{background:var(--gold);color:#111;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;}
+  .primary-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+  .table-wrap{padding:0 20px;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:hover td{background:rgba(255,255,255,0.02);}
+  tr:last-child td{border-bottom:none;}
+
+  .tag{display:inline-block;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:700;}
+  .tag-oil{background:rgba(201,169,75,0.15);color:var(--gold);}
+  .tag-tire{background:rgba(76,175,125,0.15);color:var(--green);}
+  .tag-repair{background:rgba(224,82,82,0.15);color:var(--red);}
+  .tag-inspect{background:rgba(122,127,137,0.15);color:var(--muted);}
+  .tag-ac{background:rgba(100,170,255,0.15);color:#6aaeff;}
+  .tag-other{background:rgba(122,127,137,0.1);color:var(--muted);}
+  .plate-badge{background:#fff;color:#111;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;}
+  .line-send-btn{background:rgba(6,199,85,0.15);border:1px solid rgba(6,199,85,0.3);color:#06C755;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;}
+
+  .customer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:16px 20px;}
+  .customer-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:border-color 0.15s;position:relative;}
+  .customer-card:hover{border-color:var(--gold-dim);}
+  .customer-name{font-size:15px;font-weight:700;margin-bottom:8px;}
+  .customer-cars{display:flex;flex-direction:column;gap:6px;}
+  .customer-car-row{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .customer-meta{font-size:12px;color:var(--muted);margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;}
+  .customer-count{font-size:11px;background:rgba(201,169,75,0.1);color:var(--gold);border-radius:4px;padding:2px 7px;font-weight:700;}
+  .customer-alert-dot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;}
+  .customer-alert-dot.red{background:var(--red);}
+  .customer-alert-dot.amber{background:var(--amber);}
+
+  .detail-panel{position:fixed;top:0;right:0;width:380px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:200;transform:translateX(100%);transition:transform 0.25s;overflow-y:auto;display:flex;flex-direction:column;}
+  .detail-panel.open{transform:translateX(0);}
+  .detail-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .detail-header h2{font-size:16px;font-weight:700;}
+  .close-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+  .detail-body{padding:20px;flex:1;}
+  .detail-section{margin-bottom:20px;}
+  .detail-section-title{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;}
+  .detail-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
+  .detail-row:last-child{border-bottom:none;}
+  .detail-key{font-size:13px;color:var(--muted);}
+  .detail-val{font-size:13px;font-weight:600;text-align:right;}
+  .note-box{background:var(--card);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);line-height:1.7;margin-top:8px;}
+  .line-preview-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;}
+  .line-preview-label{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;}
+  .line-bubble{background:#fff;color:#222;border-radius:12px 12px 12px 4px;padding:12px 14px;font-size:13px;line-height:1.8;white-space:pre-wrap;font-family:'Noto Sans JP',sans-serif;max-width:300px;word-break:break-word;}
+  .line-actions{display:flex;gap:8px;margin-top:12px;}
+  .line-copy-btn{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+  .line-copy-btn:hover{border-color:var(--gold);color:var(--gold);}
+  .line-open-btn{flex:1;background:#06C755;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s;padding:20px;}
+  .modal-overlay.open{opacity:1;pointer-events:all;}
+  .modal-box{background:var(--surface);border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;padding:24px;}
+  .modal-title{font-size:18px;font-weight:700;margin-bottom:18px;}
+  .form-group{margin-bottom:14px;}
+  .form-label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;}
+  .form-input,.form-textarea,.form-select{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:11px 12px;font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;transition:border-color 0.15s;}
+  .form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--gold);}
+  .form-select option{background:var(--card);}
+  .form-textarea{resize:vertical;min-height:80px;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .submit-btn{width:100%;background:var(--gold);color:#111;border:none;border-radius:var(--radius);padding:13px;font-size:15px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-top:6px;}
+  .submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .cancel-btn{width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:var(--radius);padding:11px;font-size:14px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-top:8px;}
+  .auto-fill-hint{font-size:11px;color:var(--green);margin-top:4px;}
+
+  .car-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+  .car-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;}
+  .car-item-info{font-size:13px;}
+  .car-item-info small{color:var(--muted);font-size:11px;display:block;margin-top:2px;}
+  .add-car-row{display:flex;gap:8px;margin-top:8px;}
+  .add-car-input{flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:'Noto Sans JP',sans-serif;outline:none;}
+  .add-car-input:focus{border-color:var(--gold);}
+  .add-car-btn{background:var(--card);border:1px solid var(--border);color:var(--gold);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;}
+  .delete-link{color:var(--red);font-size:12px;cursor:pointer;background:none;border:none;font-family:'Noto Sans JP',sans-serif;}
+
+  .deadline-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .deadline-input-label{font-size:11px;color:var(--gold);font-weight:700;margin-bottom:4px;display:block;}
+
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+  .loading-state{text-align:center;padding:60px 20px;color:var(--muted);}
+  .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;white-space:nowrap;}
+
+  @media(max-width:700px){
+    .stats-row,.alert-cards{grid-template-columns:1fr 1fr;}
+    .detail-panel{width:100%;}
+    th:nth-child(5),td:nth-child(5){display:none;}
+    .customer-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="logo">TATEBA <span>MOTORS — 管理画面</span></span>
+  <div class="sync-indicator">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncText">読み込み中...</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab" onclick="switchTab('alerts',this)">🔔 フォロー <span class="tab-badge" id="alertBadge" style="display:none;">0</span></div>
+  <div class="tab active" onclick="switchTab('records',this)">📋 整備記録</div>
+  <div class="tab" onclick="switchTab('customers',this)">👤 お客様管理</div>
+</div>
+
+<div class="page" id="page-alerts">
+  <div class="alert-dash">
+    <div class="alert-dash-title">フォローが必要なお客様</div>
+    <div class="alert-cards">
+      <div class="alert-stat"><div class="alert-stat-num red" id="aStatOver">0</div><div class="alert-stat-label">期限切れ</div></div>
+      <div class="alert-stat"><div class="alert-stat-num amber" id="aStatMonth">0</div><div class="alert-stat-label">30日以内</div></div>
+      <div class="alert-stat"><div class="alert-stat-num gold" id="aStatSoon">0</div><div class="alert-stat-label">60日以内</div></div>
+    </div>
+    <div class="alert-list" id="alertList"></div>
+    <div class="empty-alert" id="alertEmpty" style="display:none;">
+      <div style="font-size:36px;margin-bottom:10px;">✅</div>
+      <div>今すぐフォローが必要なお客様はいません</div>
+    </div>
+  </div>
+</div>
+
+<div class="page active" id="page-records">
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" style="color:var(--gold)" id="statTotal">0</div><div class="stat-label">総記録数</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--green)" id="statToday">0</div><div class="stat-label">本日の記録</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--amber)" id="statOil">0</div><div class="stat-label">オイル交換</div></div>
+    <div class="stat-card"><div class="stat-val" id="statCust">0</div><div class="stat-label">お客様数</div></div>
+  </div>
+  <div class="toolbar">
+    <input class="search-input" id="searchInput" placeholder="🔍 お客様名・車名・ナンバー..." oninput="renderRecords()">
+    <div class="filter-chip active" onclick="setFilter('all',this)">すべて</div>
+    <div class="filter-chip" onclick="setFilter('oil',this)">🛢️ オイル</div>
+    <div class="filter-chip" onclick="setFilter('tire',this)">🔄 タイヤ</div>
+    <div class="filter-chip" onclick="setFilter('repair',this)">🔧 修理</div>
+    <div class="filter-chip" onclick="setFilter('ac',this)">❄️ エアコン</div>
+    <button class="primary-btn" onclick="openRecordModal()">＋ 整備記録を入力</button>
+    <button class="primary-btn" style="background:var(--card);color:var(--text);border:1px solid var(--border);" onclick="loadAllData()">↻ 更新</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>作業日</th><th>お客様</th><th>車両</th><th>種別・内容</th><th>走行距離</th><th>LINE</th></tr></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty-state" id="recEmpty" style="display:none;"><div style="font-size:36px;margin-bottom:10px;">📋</div><div>まだ記録がありません</div></div>
+    <div class="loading-state" id="recLoading"><div class="spinner"></div><div>読み込み中...</div></div>
+  </div>
+</div>
+
+<div class="page" id="page-customers">
+  <div class="toolbar" style="padding-top:16px;">
+    <input class="search-input" id="custSearch" placeholder="🔍 お客様名で検索..." oninput="renderCustomers()">
+    <button class="primary-btn" onclick="openCustomerModal()">＋ お客様を登録</button>
+  </div>
+  <div class="customer-grid" id="customerGrid"></div>
+  <div class="empty-state" id="custEmpty" style="display:none;"><div style="font-size:36px;margin-bottom:10px;">👤</div><div>お客様がまだ登録されていません</div></div>
+</div>
+
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-header"><h2 id="dpTitle">詳細</h2><button class="close-btn" onclick="closeDetail()">×</button></div>
+  <div class="detail-body" id="dpBody"></div>
+</div>
+
+<div class="modal-overlay" id="recordModal" onclick="bgClose(event,'recordModal')">
+  <div class="modal-box">
+    <div class="modal-title">整備記録を入力</div>
+    <div class="form-group">
+      <label class="form-label">お客様を選択</label>
+      <select class="form-select" id="fCustomerSelect" onchange="onCustomerSelect()">
+        <option value="">— お客様を選択 —</option>
+      </select>
+      <div class="auto-fill-hint" id="autoFillHint" style="display:none;">✓ 車両情報を自動入力しました</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">車両</label>
+        <select class="form-select" id="fCarSelect" onchange="onCarSelect()"><option value="">— 車両を選択 —</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">ナンバー</label>
+        <input class="form-input" type="text" id="fPlate" readonly style="background:var(--bg);cursor:default;">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">種別</label>
+        <select class="form-select" id="fType">
+          <option>🛢️ オイル交換</option><option>🔄 タイヤ交換</option><option>🔧 修理・整備</option>
+          <option>🔍 点検</option><option>❄️ エアコン</option><option>📝 その他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">作業日</label>
+        <input class="form-input" type="date" id="fDate">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">走行距離（km）</label>
+      <input class="form-input" type="number" id="fOdo" placeholder="89200">
+    </div>
+    <div class="form-group">
+      <label class="form-label">作業内容・メモ</label>
+      <textarea class="form-textarea" id="fNote" placeholder="例：0W-20 / 4L交換&#10;次回交換目安：94,000km"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">次回おすすめ作業（任意）</label>
+      <input class="form-input" type="text" id="fNext" placeholder="例：エアコンフィルター交換をおすすめします">
+    </div>
+    <button class="submit-btn" id="saveRecordBtn" onclick="saveRecord()">保存してLINEプレビューを見る</button>
+    <button class="cancel-btn" onclick="closeModal('recordModal')">キャンセル</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="customerModal" onclick="bgClose(event,'customerModal')">
+  <div class="modal-box">
+    <div class="modal-title" id="custModalTitle">お客様を登録</div>
+    <div class="form-group">
+      <label class="form-label">お客様名</label>
+      <input class="form-input" type="text" id="cName" placeholder="田中 一郎">
+    </div>
+    <div class="form-group">
+      <label class="form-label">電話番号（任意）</label>
+      <input class="form-input" type="tel" id="cPhone" placeholder="090-0000-0000">
+    </div>
+    <div class="form-group">
+      <label class="form-label" style="color:var(--gold);font-weight:700;">⏰ 期限管理</label>
+      <div class="deadline-grid">
+        <div><span class="deadline-input-label">車検満了日</span><input class="form-input" type="date" id="cShaken"></div>
+        <div><span class="deadline-input-label">法定点検満了日</span><input class="form-input" type="date" id="cHouten"></div>
+        <div><span class="deadline-input-label">次回オイル交換目安日</span><input class="form-input" type="date" id="cOilNext"></div>
+        <div><span class="deadline-input-label">次回タイヤ交換目安日</span><input class="form-input" type="date" id="cTireNext"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">登録車両</label>
+      <div class="car-list" id="carList"></div>
+      <div class="add-car-row" style="margin-top:10px;">
+        <input class="add-car-input" type="text" id="newCarName" placeholder="車名（例：トヨタ ハイエース）">
+        <input class="add-car-input" type="text" id="newCarPlate" placeholder="ナンバー">
+        <button class="add-car-btn" onclick="addCarToList()">＋</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ（任意）</label>
+      <input class="form-input" type="text" id="cNote" placeholder="例：毎月1回来店">
+    </div>
+    <button class="submit-btn" id="saveCustomerBtn" onclick="saveCustomer()">保存する</button>
+    <button class="cancel-btn" onclick="closeModal('customerModal')">キャンセル</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ★★★ GASのURL（スプレッドシート連携） ★★★
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxiOHMS4NvNAwGm7p3A36l1Wr-7GJS-wr_doT7ra3LKvmadqPxIXLnBGDvT1266veEsyg/exec';
+
+let customers = [];
+let records = [];
+let activeFilter='all';
+let editingCustomerId=null;
+let tempCars=[];
+let isLoading=false;
+
+// ── 同期インジケーター ──
+function setSyncStatus(status, text){
+  const dot=document.getElementById('syncDot');
+  dot.className='sync-dot '+status;
+  document.getElementById('syncText').textContent=text;
+}
+
+// ── データ読み込み ──
+async function loadAllData(){
+  if(isLoading)return;
+  isLoading=true;
+  setSyncStatus('syncing','読み込み中...');
+  document.getElementById('recLoading').style.display='block';
+  try{
+    const res=await fetch(GAS_URL+'?action=getAll');
+    const json=await res.json();
+    if(json.status==='ok'){
+      customers=(json.customers||[]).map(c=>({...c,cars:Array.isArray(c.cars)?c.cars:[]}));
+      records=(json.records||[]).map(r=>({...r,id:Number(r.id),customerId:Number(r.customerId),odo:r.odo?Number(r.odo):null}));
+      setSyncStatus('synced','スプレッドシートと同期済み');
+      renderRecords();renderCustomers();renderAlerts();
+    } else {
+      setSyncStatus('error','読み込みエラー');
+      showToast('読み込みに失敗しました');
+    }
+  }catch(err){
+    setSyncStatus('error','接続エラー');
+    showToast('スプレッドシートに接続できません');
+  }
+  document.getElementById('recLoading').style.display='none';
+  isLoading=false;
+}
+
+async function gasPost(payload){
+  const res=await fetch(GAS_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+function daysUntil(s){if(!s)return null;return Math.ceil((new Date(s)-new Date())/86400000);}
+function fmtDate(s){if(!s)return'—';const d=new Date(s);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
+function tagClass(t){if(!t)return'tag-other';if(t.includes('オイル'))return'tag-oil';if(t.includes('タイヤ'))return'tag-tire';if(t.includes('修理')||t.includes('整備'))return'tag-repair';if(t.includes('点検'))return'tag-inspect';if(t.includes('エアコン'))return'tag-ac';return'tag-other';}
+
+function getAlerts(){
+  const alerts=[];
+  customers.forEach(c=>{
+    const checks=[
+      {date:c.shaken,label:'車検満了',badgeClass:'badge-shaken'},
+      {date:c.houten,label:'法定点検',badgeClass:'badge-houten'},
+      {date:c.oilNext,label:'オイル交換',badgeClass:'badge-oil'},
+      {date:c.tireNext,label:'タイヤ交換',badgeClass:'badge-oil'},
+    ];
+    checks.forEach(ck=>{
+      if(!ck.date)return;
+      const days=daysUntil(ck.date);
+      if(days<=60){alerts.push({customer:c,label:ck.label,badgeClass:ck.badgeClass,date:ck.date,days});}
+    });
+  });
+  return alerts.sort((a,b)=>a.days-b.days);
+}
+
+function renderAlerts(){
+  const alerts=getAlerts();
+  const over=alerts.filter(a=>a.days<0).length;
+  const month=alerts.filter(a=>a.days>=0&&a.days<=30).length;
+  const soon=alerts.filter(a=>a.days>30&&a.days<=60).length;
+  document.getElementById('aStatOver').textContent=over;
+  document.getElementById('aStatMonth').textContent=month;
+  document.getElementById('aStatSoon').textContent=soon;
+  const total=alerts.length;
+  const badge=document.getElementById('alertBadge');
+  if(total>0){badge.textContent=total;badge.style.display='inline-block';}else{badge.style.display='none';}
+  const list=document.getElementById('alertList');
+  const empty=document.getElementById('alertEmpty');
+  if(!alerts.length){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=alerts.map(a=>{
+    const cls=a.days<0?'danger':a.days<=30?'warn':'soon';
+    const urgCls=a.days<0?'urgency-danger':a.days<=30?'urgency-warn':'urgency-soon';
+    const urgLabel=a.days<0?`${Math.abs(a.days)}日\n超過`:a.days===0?'今日':`残り\n${a.days}日`;
+    const car=a.customer.cars[0]||{name:'—',plate:'—'};
+    const msg=buildAlertMsg(a);
+    return`<div class="alert-item ${cls}" onclick="openAlertDetail(${a.customer.id},'${a.label}')">
+      <div class="alert-urgency ${urgCls}">${urgLabel}</div>
+      <div class="alert-body">
+        <div class="alert-name">${a.customer.name} 様</div>
+        <div class="alert-car">${car.name}　<span class="plate-badge">${car.plate}</span></div>
+        <span class="alert-type-badge ${a.badgeClass}">${a.label}</span>
+      </div>
+      <div class="alert-right">
+        <div class="alert-date">${fmtDate(a.date)}</div>
+        <button class="line-mini-btn" onclick="event.stopPropagation();copyAndOpenLine('${encodeURIComponent(msg)}')">💬 LINE送信</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildAlertMsg(a){
+  const car=a.customer.cars[0]||{name:'',plate:''};
+  const lines=['【タテバモータース】',`${a.customer.name} 様`,'','いつもご利用ありがとうございます。'];
+  if(a.days<0){lines.push(`${a.label}の期限が${Math.abs(a.days)}日超過しております。`);lines.push('お早めにご連絡ください。');}
+  else if(a.days===0){lines.push(`本日が${a.label}の期限日です。`);}
+  else{lines.push(`${a.label}の期限まで残り${a.days}日となりました。`);if(a.days<=30)lines.push('お早めのご予約をおすすめします。');}
+  lines.push('',`🚗 ${car.name}　${car.plate}`,`📅 期限日：${fmtDate(a.date)}`,'','ご予約・ご相談はこのLINEからどうぞ🔧','タテバ株式会社　045-930-3200');
+  return lines.join('\n');
+}
+
+function copyAndOpenLine(encodedMsg){
+  const msg=decodeURIComponent(encodedMsg);
+  navigator.clipboard.writeText(msg).then(()=>{
+    showToast('メッセージをコピーしました ✓');
+    setTimeout(()=>window.open('https://line.me/R/ti/p/@350uyhfi','_blank'),500);
+  });
+}
+
+function openAlertDetail(custId,label){
+  const c=customers.find(x=>x.id===custId);if(!c)return;
+  const a=getAlerts().find(x=>x.customer.id===custId&&x.label===label);if(!a)return;
+  const msg=buildAlertMsg(a);
+  document.getElementById('dpTitle').textContent=c.name+' 様';
+  document.getElementById('dpBody').innerHTML=`
+    <div class="detail-section">
+      <div class="detail-section-title">フォロー内容</div>
+      <div class="detail-row"><span class="detail-key">種別</span><span class="detail-val"><span class="alert-type-badge ${a.badgeClass}">${label}</span></span></div>
+      <div class="detail-row"><span class="detail-key">期限日</span><span class="detail-val">${fmtDate(a.date)}</span></div>
+      <div class="detail-row"><span class="detail-key">残り日数</span><span class="detail-val" style="color:${a.days<0?'var(--red)':a.days<=30?'var(--amber)':'var(--gold)'}">${a.days<0?`${Math.abs(a.days)}日超過`:`残り${a.days}日`}</span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">お客様情報</div>
+      <div class="detail-row"><span class="detail-key">お名前</span><span class="detail-val">${c.name}</span></div>
+      ${c.phone?`<div class="detail-row"><span class="detail-key">電話番号</span><span class="detail-val">${c.phone}</span></div>`:''}
+      ${c.cars.map(car=>`<div class="detail-row"><span class="detail-key">${car.name}</span><span class="plate-badge">${car.plate}</span></div>`).join('')}
+    </div>
+    <div class="line-preview-wrap">
+      <div class="line-preview-label">💬 LINEメッセージ</div>
+      <div style="background:#86b5d1;padding:12px;border-radius:8px;"><div class="line-bubble">${msg.replace(/\n/g,'<br>')}</div></div>
+      <div class="line-actions">
+        <button class="line-copy-btn" onclick="navigator.clipboard.writeText(\`${msg.replace(/`/g,'\\`')}\`).then(()=>showToast('コピーしました ✓'))">📋 コピー</button>
+        <button class="line-open-btn" onclick="window.open('https://line.me/R/ti/p/@350uyhfi','_blank')">LINEを開く</button>
+      </div>
+    </div>
+    <button onclick="openCustomerModal(${c.id})" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:10px;font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;">✏️ 期限日を編集</button>`;
+  document.getElementById('detailPanel').classList.add('open');
+}
+
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+  closeDetail();
+  if(name==='alerts')renderAlerts();
+  else if(name==='customers')renderCustomers();
+  else renderRecords();
+}
+
+function setFilter(f,el){activeFilter=f;document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');renderRecords();}
+
+function buildLineMsg(r){
+  const lines=['【タテバモータース 整備記録】',`${r.customerName||'お客様'} 様`,'',`📅 作業日：${fmtDate(r.date)}`,`🚗 車両：${r.carName||''}　${r.plate||''}`];
+  if(r.odo)lines.push(`📏 走行距離：${Number(r.odo).toLocaleString()} km`);
+  lines.push('',`【${(r.type||'').replace(/^.+?\s/,'')}】`);
+  if(r.note)lines.push(r.note);
+  if(r.next)lines.push('',`💡 ${r.next}`);
+  lines.push('','ご不明な点はLINEでお気軽にどうぞ🔧','タテバ株式会社　045-930-3200');
+  return lines.join('\n');
+}
+
+function renderRecords(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  let rows=records.filter(r=>{
+    const m=!q||[r.customerName,r.carName,r.plate,r.type,r.note].some(v=>v&&String(v).toLowerCase().includes(q));
+    const f=activeFilter;
+    const fm=f==='all'||(f==='oil'&&r.type&&r.type.includes('オイル'))||(f==='tire'&&r.type&&r.type.includes('タイヤ'))||(f==='repair'&&r.type&&(r.type.includes('修理')||r.type.includes('整備')))||(f==='ac'&&r.type&&r.type.includes('エアコン'));
+    return m&&fm;
+  }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  const tbody=document.getElementById('tableBody');
+  const empty=document.getElementById('recEmpty');
+  if(!rows.length){tbody.innerHTML='';empty.style.display=records.length?'none':'block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=rows.map(r=>`
+    <tr style="cursor:pointer;" onclick="openRecordDetail(${r.id})">
+      <td style="white-space:nowrap;font-family:'Inter',sans-serif;font-size:12px;">${fmtDate(r.date)}</td>
+      <td style="font-weight:600;">${r.customerName||'—'}</td>
+      <td><div>${r.carName||'—'}</div>${r.plate?`<div style="margin-top:3px;"><span class="plate-badge">${r.plate}</span></div>`:''}</td>
+      <td><span class="tag ${tagClass(r.type)}">${(r.type||'').replace(/^.+?\s/,'')}</span>${r.note?`<div style="font-size:12px;color:var(--muted);margin-top:3px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${String(r.note).split('\n')[0]}</div>`:''}</td>
+      <td style="font-family:'Inter',sans-serif;">${r.odo?Number(r.odo).toLocaleString()+' km':'—'}</td>
+      <td onclick="event.stopPropagation()"><button class="line-send-btn" onclick="openRecordDetail(${r.id},true)">💬 LINE</button></td>
+    </tr>`).join('');
+
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('statTotal').textContent=records.length;
+  document.getElementById('statToday').textContent=records.filter(r=>r.date===today).length;
+  document.getElementById('statOil').textContent=records.filter(r=>r.type&&r.type.includes('オイル')).length;
+  document.getElementById('statCust').textContent=customers.length;
+}
+
+function openRecordDetail(id,showLine=false){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const msg=buildLineMsg(r);
+  document.getElementById('dpTitle').textContent=(r.customerName||'記録')+'様';
+  document.getElementById('dpBody').innerHTML=`
+    <div class="detail-section">
+      <div class="detail-section-title">お客様・車両</div>
+      <div class="detail-row"><span class="detail-key">お客様名</span><span class="detail-val">${r.customerName||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">車名</span><span class="detail-val">${r.carName||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">ナンバー</span><span class="detail-val">${r.plate||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">作業日</span><span class="detail-val">${fmtDate(r.date)}</span></div>
+      <div class="detail-row"><span class="detail-key">走行距離</span><span class="detail-val">${r.odo?Number(r.odo).toLocaleString()+' km':'—'}</span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">作業内容</div>
+      <div class="detail-row"><span class="detail-key">種別</span><span class="detail-val">${r.type||'—'}</span></div>
+      ${r.note?`<div class="note-box">${String(r.note).replace(/\n/g,'<br>')}</div>`:''}
+      ${r.next?`<div class="note-box" style="margin-top:8px;border-left:3px solid var(--gold);padding-left:12px;">💡 ${r.next}</div>`:''}
+    </div>
+    <div class="line-preview-wrap">
+      <div class="line-preview-label">💬 LINEメッセージ</div>
+      <div style="background:#86b5d1;padding:12px;border-radius:8px;"><div class="line-bubble">${msg.replace(/\n/g,'<br>')}</div></div>
+      <div class="line-actions">
+        <button class="line-copy-btn" onclick="navigator.clipboard.writeText(\`${msg.replace(/`/g,'\\`')}\`).then(()=>showToast('コピーしました ✓'))">📋 コピー</button>
+        <button class="line-open-btn" onclick="window.open('https://line.me/R/ti/p/@350uyhfi','_blank')">LINEを開く</button>
+      </div>
+    </div>
+    <button onclick="deleteRecord(${r.id})" style="width:100%;background:transparent;border:1px solid rgba(224,82,82,0.3);color:var(--red);border-radius:8px;padding:10px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;">この記録を削除</button>`;
+  document.getElementById('detailPanel').classList.add('open');
+  if(showLine)setTimeout(()=>document.getElementById('detailPanel').scrollTo(0,9999),100);
+}
+
+async function deleteRecord(id){
+  if(!confirm('削除しますか？'))return;
+  setSyncStatus('syncing','削除中...');
+  try{
+    await gasPost({action:'deleteRecord',id});
+    records=records.filter(x=>x.id!==id);
+    closeDetail();renderRecords();renderAlerts();
+    setSyncStatus('synced','スプレッドシートと同期済み');
+    showToast('削除しました');
+  }catch(e){setSyncStatus('error','エラー');showToast('削除に失敗しました');}
+}
+
+function openRecordModal(){
+  const sel=document.getElementById('fCustomerSelect');
+  sel.innerHTML='<option value="">— お客様を選択 —</option>'+customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('fCarSelect').innerHTML='<option value="">— 車両を選択 —</option>';
+  document.getElementById('fPlate').value='';
+  document.getElementById('fDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('fOdo').value='';
+  document.getElementById('fNote').value='';
+  document.getElementById('fNext').value='';
+  document.getElementById('autoFillHint').style.display='none';
+  document.getElementById('recordModal').classList.add('open');
+}
+function onCustomerSelect(){
+  const id=Number(document.getElementById('fCustomerSelect').value);
+  const c=customers.find(x=>x.id===id);
+  const carSel=document.getElementById('fCarSelect');
+  if(!c){carSel.innerHTML='<option value="">— 車両を選択 —</option>';document.getElementById('fPlate').value='';return;}
+  carSel.innerHTML='<option value="">— 車両を選択 —</option>'+c.cars.map((car,i)=>`<option value="${i}">${car.name}　${car.plate}</option>`).join('');
+  if(c.cars.length===1){carSel.value='0';onCarSelect();}
+  else{document.getElementById('fPlate').value='';document.getElementById('autoFillHint').style.display='none';}
+}
+function onCarSelect(){
+  const custId=Number(document.getElementById('fCustomerSelect').value);
+  const carIdx=document.getElementById('fCarSelect').value;
+  const c=customers.find(x=>x.id===custId);
+  if(!c||carIdx===''){document.getElementById('fPlate').value='';return;}
+  document.getElementById('fPlate').value=c.cars[Number(carIdx)].plate;
+  document.getElementById('autoFillHint').style.display='block';
+}
+async function saveRecord(){
+  const custId=Number(document.getElementById('fCustomerSelect').value);
+  const carIdx=document.getElementById('fCarSelect').value;
+  const date=document.getElementById('fDate').value;
+  if(!custId){showToast('お客様を選択してください');return;}
+  if(!date){showToast('作業日を入力してください');return;}
+  const c=customers.find(x=>x.id===custId);
+  const car=(c&&carIdx!=='')?c.cars[Number(carIdx)]:{name:'',plate:''};
+  const rec={id:Date.now(),customerId:custId,customerName:c?c.name:'',carName:car.name,plate:car.plate,type:document.getElementById('fType').value,date,odo:document.getElementById('fOdo').value?Number(document.getElementById('fOdo').value):null,note:document.getElementById('fNote').value.trim(),next:document.getElementById('fNext').value.trim(),timestamp:new Date().toISOString()};
+
+  const btn=document.getElementById('saveRecordBtn');
+  btn.disabled=true;btn.textContent='保存中...';
+  setSyncStatus('syncing','保存中...');
+  try{
+    await gasPost({action:'saveRecord',record:rec});
+    records.unshift(rec);
+    setSyncStatus('synced','スプレッドシートと同期済み');
+    closeModal('recordModal');renderRecords();renderAlerts();
+    showToast('保存しました ✓');
+    setTimeout(()=>openRecordDetail(rec.id,true),300);
+  }catch(e){
+    setSyncStatus('error','保存エラー');
+    showToast('保存に失敗しました。もう一度お試しください');
+  }
+  btn.disabled=false;btn.textContent='保存してLINEプレビューを見る';
+}
+
+function renderCustomers(){
+  const q=document.getElementById('custSearch').value.toLowerCase();
+  const list=customers.filter(c=>!q||c.name.toLowerCase().includes(q));
+  const grid=document.getElementById('customerGrid');
+  const empty=document.getElementById('custEmpty');
+  if(!list.length){grid.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  grid.innerHTML=list.map(c=>{
+    const recCount=records.filter(r=>r.customerId===c.id).length;
+    const alerts=getAlerts().filter(a=>a.customer.id===c.id);
+    const hasDanger=alerts.some(a=>a.days<0||a.days<=30);
+    const hasWarn=alerts.some(a=>a.days>30&&a.days<=60);
+    const dotHtml=hasDanger?'<div class="customer-alert-dot red"></div>':hasWarn?'<div class="customer-alert-dot amber"></div>':'';
+    return`<div class="customer-card" onclick="openCustomerDetail(${c.id})">
+      ${dotHtml}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="customer-name">${c.name}</div>
+        <span class="customer-count">整備 ${recCount}件</span>
+      </div>
+      <div class="customer-cars">${c.cars.map(car=>`<div class="customer-car-row">🚗 <span>${car.name}</span><span class="plate-badge">${car.plate}</span></div>`).join('')}</div>
+      <div class="customer-meta">
+        ${c.shaken?`<span>🔑 車検 ${fmtDate(c.shaken)}</span>`:''}
+        ${c.phone?`<span>📞 ${c.phone}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openCustomerDetail(id){
+  const c=customers.find(x=>x.id===id);if(!c)return;
+  const recs=records.filter(r=>r.customerId===id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const deadlines=[{label:'車検満了',date:c.shaken},{label:'法定点検',date:c.houten},{label:'次回オイル交換',date:c.oilNext},{label:'次回タイヤ交換',date:c.tireNext}].filter(d=>d.date);
+  document.getElementById('dpTitle').textContent=c.name+' 様';
+  document.getElementById('dpBody').innerHTML=`
+    <div class="detail-section">
+      <div class="detail-section-title">基本情報</div>
+      <div class="detail-row"><span class="detail-key">お名前</span><span class="detail-val">${c.name}</span></div>
+      ${c.phone?`<div class="detail-row"><span class="detail-key">電話番号</span><span class="detail-val">${c.phone}</span></div>`:''}
+      ${c.note?`<div class="detail-row"><span class="detail-key">メモ</span><span class="detail-val">${c.note}</span></div>`:''}
+    </div>
+    ${deadlines.length?`<div class="detail-section">
+      <div class="detail-section-title">⏰ 期限管理</div>
+      ${deadlines.map(d=>{const days=daysUntil(d.date);const col=days<0?'var(--red)':days<=30?'var(--amber)':days<=60?'var(--gold)':'var(--green)';return`<div class="detail-row"><span class="detail-key">${d.label}</span><span class="detail-val"><span style="color:${col}">${fmtDate(d.date)}</span><span style="font-size:11px;color:${col};margin-left:6px;">${days<0?`(${Math.abs(days)}日超過)`:`(残${days}日)`}</span></span></div>`;}).join('')}
+    </div>`:''}
+    <div class="detail-section">
+      <div class="detail-section-title">登録車両</div>
+      ${c.cars.map(car=>`<div class="detail-row"><span class="detail-key">${car.name}</span><span class="plate-badge">${car.plate}</span></div>`).join('')}
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">整備履歴（${recs.length}件）</div>
+      ${recs.length?recs.map(r=>`<div class="detail-row" style="cursor:pointer;" onclick="switchTab('records',document.querySelectorAll('.tab')[1]);openRecordDetail(${r.id})"><span class="detail-key">${fmtDate(r.date)} <span class="tag ${tagClass(r.type)}" style="margin-left:4px;">${(r.type||'').replace(/^.+?\s/,'')}</span></span><span style="font-size:12px;color:var(--muted);">${r.carName}</span></div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:8px 0;">まだ記録がありません</div>'}
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="line-copy-btn" style="flex:1;" onclick="openCustomerModal(${c.id})">✏️ 編集</button>
+      <button onclick="deleteCustomer(${c.id})" style="background:transparent;border:1px solid rgba(224,82,82,0.3);color:var(--red);border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;">削除</button>
+    </div>`;
+  document.getElementById('detailPanel').classList.add('open');
+}
+
+function openCustomerModal(editId=null){
+  editingCustomerId=editId;tempCars=[];
+  document.getElementById('custModalTitle').textContent=editId?'お客様情報を編集':'お客様を登録';
+  if(editId){
+    const c=customers.find(x=>x.id===editId);
+    document.getElementById('cName').value=c.name;
+    document.getElementById('cPhone').value=c.phone||'';
+    document.getElementById('cShaken').value=c.shaken||'';
+    document.getElementById('cHouten').value=c.houten||'';
+    document.getElementById('cOilNext').value=c.oilNext||'';
+    document.getElementById('cTireNext').value=c.tireNext||'';
+    document.getElementById('cNote').value=c.note||'';
+    tempCars=[...c.cars];
+  }else{
+    ['cName','cPhone','cNote'].forEach(id=>document.getElementById(id).value='');
+    ['cShaken','cHouten','cOilNext','cTireNext'].forEach(id=>document.getElementById(id).value='');
+  }
+  document.getElementById('newCarName').value='';
+  document.getElementById('newCarPlate').value='';
+  renderTempCars();
+  document.getElementById('customerModal').classList.add('open');
+}
+function renderTempCars(){document.getElementById('carList').innerHTML=tempCars.map((car,i)=>`<div class="car-item"><div class="car-item-info">${car.name}<small>${car.plate}</small></div><button class="delete-link" onclick="removeTempCar(${i})">✕</button></div>`).join('');}
+function addCarToList(){const name=document.getElementById('newCarName').value.trim();const plate=document.getElementById('newCarPlate').value.trim();if(!name){showToast('車名を入力してください');return;}tempCars.push({name,plate});document.getElementById('newCarName').value='';document.getElementById('newCarPlate').value='';renderTempCars();}
+function removeTempCar(i){tempCars.splice(i,1);renderTempCars();}
+
+async function saveCustomer(){
+  const name=document.getElementById('cName').value.trim();
+  if(!name){showToast('お客様名を入力してください');return;}
+  const data={id:editingCustomerId||Date.now(),name,phone:document.getElementById('cPhone').value.trim(),shaken:document.getElementById('cShaken').value,houten:document.getElementById('cHouten').value,oilNext:document.getElementById('cOilNext').value,tireNext:document.getElementById('cTireNext').value,cars:[...tempCars],note:document.getElementById('cNote').value.trim()};
+
+  const btn=document.getElementById('saveCustomerBtn');
+  btn.disabled=true;btn.textContent='保存中...';
+  setSyncStatus('syncing','保存中...');
+  try{
+    await gasPost({action:'saveCustomer',customer:data});
+    if(editingCustomerId){Object.assign(customers.find(x=>x.id===editingCustomerId),data);}
+    else{customers.push(data);}
+    setSyncStatus('synced','スプレッドシートと同期済み');
+    closeModal('customerModal');renderCustomers();renderAlerts();
+    showToast(editingCustomerId?'更新しました ✓':'登録しました ✓');
+  }catch(e){
+    setSyncStatus('error','保存エラー');
+    showToast('保存に失敗しました。もう一度お試しください');
+  }
+  btn.disabled=false;btn.textContent='保存する';
+}
+
+async function deleteCustomer(id){
+  if(!confirm('このお客様を削除しますか？'))return;
+  setSyncStatus('syncing','削除中...');
+  try{
+    await gasPost({action:'deleteCustomer',id});
+    customers=customers.filter(x=>x.id!==id);
+    closeDetail();renderCustomers();renderAlerts();
+    setSyncStatus('synced','スプレッドシートと同期済み');
+    showToast('削除しました');
+  }catch(e){setSyncStatus('error','エラー');showToast('削除に失敗しました');}
+}
+
+function closeDetail(){document.getElementById('detailPanel').classList.remove('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function bgClose(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.cssText='position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:1;z-index:999;white-space:nowrap;transition:opacity 0.3s;pointer-events:none;';setTimeout(()=>t.style.opacity='0',2200);}
+
+// ── 初回読み込み ──
+loadAllData();
+// 30秒ごとに自動更新（他のスタッフの変更を反映）
+setInterval(loadAllData, 30000);
+</script>
+</body>
+</html>
