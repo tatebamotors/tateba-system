@@ -331,7 +331,7 @@
 
 <script>
 // ★★★ GASのURL（スプレッドシート連携） ★★★
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxiOHMS4NvNAwGm7p3A36l1Wr-7GJS-wr_doT7ra3LKvmadqPxIXLnBGDvT1266veEsyg/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz1LlPe5Ue_4TvVdYfsJO7Nl5DkySsN5fE6xmdQoZMRP4Ui1J0vCayXainPb9FHk0ABHQ/exec';
 
 let customers = [];
 let records = [];
@@ -355,7 +355,10 @@ async function loadAllData(){
   document.getElementById('recLoading').style.display='block';
   try{
     const res=await fetch(GAS_URL+'?action=getAll');
-    const json=await res.json();
+    if(!res.ok){throw new Error('HTTP '+res.status);}
+    const text=await res.text();
+    let json;
+    try{ json=JSON.parse(text); }catch(parseErr){ throw new Error('JSON parse failed: '+text.slice(0,100)); }
     if(json.status==='ok'){
       customers=(json.customers||[]).map(c=>({...c,cars:Array.isArray(c.cars)?c.cars:[]}));
       records=(json.records||[]).map(r=>({...r,id:Number(r.id),customerId:Number(r.customerId),odo:r.odo?Number(r.odo):null}));
@@ -366,8 +369,9 @@ async function loadAllData(){
       showToast('読み込みに失敗しました');
     }
   }catch(err){
-    setSyncStatus('error','接続エラー');
-    showToast('スプレッドシートに接続できません');
+    setSyncStatus('error','接続エラー: '+err.message);
+    showToast('スプレッドシートに接続できません: '+err.message);
+    console.error('loadAllData error:',err);
   }
   document.getElementById('recLoading').style.display='none';
   isLoading=false;
