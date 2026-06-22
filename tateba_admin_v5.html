@@ -111,6 +111,7 @@
   .tag-tire{background:rgba(76,175,125,0.15);color:var(--green);}
   .tag-repair{background:rgba(224,82,82,0.15);color:var(--red);}
   .tag-inspect{background:rgba(122,127,137,0.15);color:var(--muted);}
+  .tag-shaken{background:rgba(224,82,82,0.15);color:var(--red);}
   .tag-ac{background:rgba(100,170,255,0.15);color:#6aaeff;}
   .tag-other{background:rgba(122,127,137,0.1);color:var(--muted);}
   .plate-badge{background:#fff;color:#111;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;}
@@ -315,7 +316,7 @@
         <label class="form-label">種別</label>
         <select class="form-select" id="fType">
           <option>🛢️ オイル交換</option><option>🔄 タイヤ交換</option><option>🔧 修理・整備</option>
-          <option>🔍 点検</option><option>❄️ エアコン</option><option>📝 その他</option>
+          <option>🔍 点検</option><option>📋 車検</option><option>❄️ エアコン</option><option>📝 その他</option>
         </select>
       </div>
       <div class="form-group">
@@ -396,7 +397,7 @@
         <label class="form-label">作業種別</label>
         <select class="form-select" id="bType">
           <option>🛢️ オイル交換</option><option>🔄 タイヤ交換</option><option>🔧 修理・整備</option>
-          <option>🔍 点検</option><option>❄️ エアコン</option><option>📝 その他</option>
+          <option>🔍 点検</option><option>📋 車検</option><option>❄️ エアコン</option><option>📝 その他</option>
         </select>
       </div>
     </div>
@@ -473,7 +474,7 @@ async function gasPost(payload){
 
 function daysUntil(s){if(!s)return null;return Math.ceil((new Date(s)-new Date())/86400000);}
 function fmtDate(s){if(!s)return'—';const d=new Date(s);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
-function tagClass(t){if(!t)return'tag-other';if(t.includes('オイル'))return'tag-oil';if(t.includes('タイヤ'))return'tag-tire';if(t.includes('修理')||t.includes('整備'))return'tag-repair';if(t.includes('点検'))return'tag-inspect';if(t.includes('エアコン'))return'tag-ac';return'tag-other';}
+function tagClass(t){if(!t)return'tag-other';if(t.includes('オイル'))return'tag-oil';if(t.includes('タイヤ'))return'tag-tire';if(t.includes('修理')||t.includes('整備'))return'tag-repair';if(t.includes('車検'))return'tag-shaken';if(t.includes('点検'))return'tag-inspect';if(t.includes('エアコン'))return'tag-ac';return'tag-other';}
 
 function getAlerts(){
   const alerts=[];
@@ -988,6 +989,15 @@ function removeTempCar(i){tempCars.splice(i,1);renderTempCars();}
 async function saveCustomer(){
   const name=document.getElementById('cName').value.trim();
   if(!name){showToast('お客様名を入力してください');return;}
+  // 「＋」を押し忘れて車名だけ入力されている場合は自動的にリストに追加する
+  const pendingCarName=document.getElementById('newCarName').value.trim();
+  if(pendingCarName){
+    const pendingPlate=document.getElementById('newCarPlate').value.trim();
+    tempCars.push({name:pendingCarName,plate:pendingPlate});
+    document.getElementById('newCarName').value='';
+    document.getElementById('newCarPlate').value='';
+    renderTempCars();
+  }
   const data={id:editingCustomerId||Date.now(),name,phone:document.getElementById('cPhone').value.trim(),shaken:document.getElementById('cShaken').value,houten:document.getElementById('cHouten').value,oilNext:document.getElementById('cOilNext').value,tireNext:document.getElementById('cTireNext').value,cars:[...tempCars],note:document.getElementById('cNote').value.trim()};
 
   const btn=document.getElementById('saveCustomerBtn');
