@@ -426,6 +426,7 @@ let activeFilter='all';
 let editingCustomerId=null;
 let tempCars=[];
 let isLoading=false;
+let isSaving=false;
 
 // ── 同期インジケーター ──
 function setSyncStatus(status, text){
@@ -436,7 +437,7 @@ function setSyncStatus(status, text){
 
 // ── データ読み込み ──
 async function loadAllData(){
-  if(isLoading)return;
+  if(isLoading||isSaving)return;
   isLoading=true;
   setSyncStatus('syncing','読み込み中...');
   document.getElementById('recLoading').style.display='block';
@@ -632,8 +633,10 @@ async function moveBoardItem(id,newStatus){
   const b=boardItems.find(x=>x.id===id); if(!b)return;
   b.status=newStatus;
   renderBoard();
+  isSaving=true;
   try{ await gasPost({action:'saveBoardItem',item:b}); }
   catch(e){ showToast('更新の保存に失敗しました'); }
+  isSaving=false;
 
   if(newStatus==='done'){
     setTimeout(()=>{
@@ -691,11 +694,13 @@ async function saveBoardNote(id){
   b.note=newNote;
   const btn=document.getElementById('boardNoteSaveBtn');
   btn.disabled=true;btn.textContent='保存中...';
+  isSaving=true;
   try{
     await gasPost({action:'saveBoardItem',item:b});
     renderBoard();
     showToast('メモを保存しました ✓');
   }catch(e){ showToast('保存に失敗しました'); }
+  isSaving=false;
   btn.disabled=false;btn.textContent='メモを保存';
 }
 
@@ -703,8 +708,10 @@ async function deleteBoardItem(id){
   if(!confirm('この車両をボードから削除しますか？'))return;
   boardItems=boardItems.filter(x=>x.id!==id);
   closeDetail();renderBoard();
+  isSaving=true;
   try{ await gasPost({action:'deleteBoardItem',id}); }
   catch(e){ showToast('削除の同期に失敗しました'); }
+  isSaving=false;
 }
 
 function openBoardModal(){
@@ -746,12 +753,14 @@ async function saveBoardItem(){
   const item={id:Date.now(),customerId:custId,customerName:c?c.name:'',carName:car.name,plate:car.plate,type:document.getElementById('bType').value,note:document.getElementById('bNote').value.trim(),status:'checkin',timestamp:new Date().toISOString()};
   const btn=document.getElementById('saveBoardBtn');
   btn.disabled=true;btn.textContent='保存中...';
+  isSaving=true;
   try{
     await gasPost({action:'saveBoardItem',item});
     boardItems.push(item);
     closeModal('boardModal');renderBoard();
     showToast('ボードに追加しました ✓');
   }catch(e){ showToast('保存に失敗しました'); }
+  isSaving=false;
   btn.disabled=false;btn.textContent='「受付」に追加する';
 }
 
@@ -837,8 +846,10 @@ async function markLineSent(id){
   const r=records.find(x=>x.id===id); if(!r)return;
   r.lineSent=true;
   renderRecords();
+  isSaving=true;
   try{ await gasPost({action:'saveRecord',record:r}); }
   catch(e){ /* サイレント失敗、見た目だけ更新済み */ }
+  isSaving=false;
 }
 
 async function markLineUnsent(id){
@@ -846,13 +857,16 @@ async function markLineUnsent(id){
   r.lineSent=false;
   openRecordDetail(id);
   renderRecords();
+  isSaving=true;
   try{ await gasPost({action:'saveRecord',record:r}); }
   catch(e){ /* サイレント失敗 */ }
+  isSaving=false;
 }
 
 async function deleteRecord(id){
   if(!confirm('削除しますか？'))return;
   setSyncStatus('syncing','削除中...');
+  isSaving=true;
   try{
     await gasPost({action:'deleteRecord',id});
     records=records.filter(x=>x.id!==id);
@@ -860,6 +874,7 @@ async function deleteRecord(id){
     setSyncStatus('synced','スプレッドシートと同期済み');
     showToast('削除しました');
   }catch(e){setSyncStatus('error','エラー');showToast('削除に失敗しました');}
+  isSaving=false;
 }
 
 function openRecordModal(){
@@ -918,6 +933,7 @@ async function saveRecord(){
   const btn=document.getElementById('saveRecordBtn');
   btn.disabled=true;btn.textContent='保存中...';
   setSyncStatus('syncing','保存中...');
+  isSaving=true;
   try{
     await gasPost({action:'saveRecord',record:rec});
     records.unshift(rec);
@@ -929,6 +945,7 @@ async function saveRecord(){
     setSyncStatus('error','保存エラー');
     showToast('保存に失敗しました。もう一度お試しください');
   }
+  isSaving=false;
   btn.disabled=false;btn.textContent='保存してLINEプレビューを見る';
 }
 
@@ -1034,6 +1051,7 @@ async function saveCustomer(){
   const btn=document.getElementById('saveCustomerBtn');
   btn.disabled=true;btn.textContent='保存中...';
   setSyncStatus('syncing','保存中...');
+  isSaving=true;
   try{
     await gasPost({action:'saveCustomer',customer:data});
     if(editingCustomerId){Object.assign(customers.find(x=>x.id===editingCustomerId),data);}
@@ -1045,12 +1063,14 @@ async function saveCustomer(){
     setSyncStatus('error','保存エラー');
     showToast('保存に失敗しました。もう一度お試しください');
   }
+  isSaving=false;
   btn.disabled=false;btn.textContent='保存する';
 }
 
 async function deleteCustomer(id){
   if(!confirm('このお客様を削除しますか？'))return;
   setSyncStatus('syncing','削除中...');
+  isSaving=true;
   try{
     await gasPost({action:'deleteCustomer',id});
     customers=customers.filter(x=>x.id!==id);
@@ -1058,6 +1078,7 @@ async function deleteCustomer(id){
     setSyncStatus('synced','スプレッドシートと同期済み');
     showToast('削除しました');
   }catch(e){setSyncStatus('error','エラー');showToast('削除に失敗しました');}
+  isSaving=false;
 }
 
 function closeDetail(){document.getElementById('detailPanel').classList.remove('open');}
