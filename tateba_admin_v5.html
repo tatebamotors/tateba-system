@@ -296,6 +296,7 @@
     <div class="modal-title">整備記録を入力</div>
     <div class="form-group">
       <label class="form-label">お客様を選択</label>
+      <input class="form-input" type="text" id="fCustomerSearch" placeholder="🔍 お客様名で検索..." oninput="filterRecordCustomerSelect()" style="margin-bottom:6px;">
       <select class="form-select" id="fCustomerSelect" onchange="onCustomerSelect()">
         <option value="">— お客様を選択 —</option>
       </select>
@@ -384,6 +385,7 @@
     <div class="modal-title">車両を工程ボードに追加</div>
     <div class="form-group">
       <label class="form-label">お客様を選択</label>
+      <input class="form-input" type="text" id="bCustomerSearch" placeholder="🔍 お客様名で検索..." oninput="filterBoardCustomerSelect()" style="margin-bottom:6px;">
       <select class="form-select" id="bCustomerSelect" onchange="onBoardCustomerSelect()">
         <option value="">— お客様を選択 —</option>
       </select>
@@ -710,7 +712,22 @@ function openBoardModal(){
   sel.innerHTML='<option value="">— お客様を選択 —</option>'+customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   document.getElementById('bCarSelect').innerHTML='<option value="">— 車両を選択 —</option>';
   document.getElementById('bNote').value='';
+  document.getElementById('bCustomerSearch').value='';
   document.getElementById('boardModal').classList.add('open');
+}
+function filterBoardCustomerSelect(){
+  const q=document.getElementById('bCustomerSearch').value.toLowerCase();
+  const sel=document.getElementById('bCustomerSelect');
+  const filtered=customers.filter(c=>!q||c.name.toLowerCase().includes(q));
+  const currentVal=sel.value;
+  sel.innerHTML='<option value="">— お客様を選択 —</option>'+filtered.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  // 検索結果が1件だけなら自動選択
+  if(filtered.length===1){
+    sel.value=String(filtered[0].id);
+    onBoardCustomerSelect();
+  } else if(filtered.some(c=>String(c.id)===currentVal)){
+    sel.value=currentVal;
+  }
 }
 function onBoardCustomerSelect(){
   const id=Number(document.getElementById('bCustomerSelect').value);
@@ -854,8 +871,22 @@ function openRecordModal(){
   document.getElementById('fOdo').value='';
   document.getElementById('fNote').value='';
   document.getElementById('fNext').value='';
+  document.getElementById('fCustomerSearch').value='';
   document.getElementById('autoFillHint').style.display='none';
   document.getElementById('recordModal').classList.add('open');
+}
+function filterRecordCustomerSelect(){
+  const q=document.getElementById('fCustomerSearch').value.toLowerCase();
+  const sel=document.getElementById('fCustomerSelect');
+  const filtered=customers.filter(c=>!q||c.name.toLowerCase().includes(q));
+  const currentVal=sel.value;
+  sel.innerHTML='<option value="">— お客様を選択 —</option>'+filtered.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(filtered.length===1){
+    sel.value=String(filtered[0].id);
+    onCustomerSelect();
+  } else if(filtered.some(c=>String(c.id)===currentVal)){
+    sel.value=currentVal;
+  }
 }
 function onCustomerSelect(){
   const id=Number(document.getElementById('fCustomerSelect').value);
