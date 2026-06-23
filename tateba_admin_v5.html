@@ -49,6 +49,48 @@
   .board-move-btn:hover{border-color:var(--gold);color:var(--gold);}
   .board-empty{text-align:center;color:var(--muted);font-size:12px;padding:24px 8px;}
 
+  /* 代車管理 */
+  .loaner-wrap{padding:16px 20px;}
+  .loaner-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .loaner-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);min-height:160px;}
+  .loaner-col-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .loaner-col-title{font-size:13px;font-weight:700;letter-spacing:1px;}
+  .loaner-col.status-out .loaner-col-title{color:var(--amber);}
+  .loaner-col.status-ready .loaner-col-title{color:var(--green);}
+  .loaner-col-body{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:100px;}
+  .loaner-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 12px;cursor:pointer;transition:border-color 0.15s;}
+  .loaner-card:hover{border-color:var(--gold-dim);}
+  .loaner-card-name{font-size:13px;font-weight:700;}
+  .loaner-card-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+  .loaner-card-move{margin-top:8px;}
+  .loaner-due{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-top:6px;}
+  .loaner-due.ok{background:rgba(76,175,125,0.15);color:var(--green);}
+  .loaner-due.soon{background:rgba(224,154,58,0.15);color:var(--amber);}
+  .loaner-due.over{background:rgba(224,82,82,0.15);color:var(--red);}
+  .loaner-move-btn{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px;font-size:11px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+  .loaner-move-btn:hover{border-color:var(--gold);color:var(--gold);}
+  /* loaner-due は代車自体の車検満了日表示に使用 */
+
+  /* Todoリスト */
+  .todo-wrap{padding:16px 20px;max-width:600px;}
+  .todo-add-row{display:flex;gap:8px;margin-bottom:16px;}
+  .todo-add-input{flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:11px 14px;font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;}
+  .todo-add-input:focus{border-color:var(--gold);}
+  .todo-add-btn{background:var(--gold);color:#111;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;}
+  .todo-list{display:flex;flex-direction:column;gap:8px;}
+  .todo-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:13px 14px;display:flex;align-items:center;gap:12px;}
+  .todo-checkbox{width:22px;height:22px;border-radius:6px;border:2px solid var(--muted);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#111;transition:all 0.15s;}
+  .todo-checkbox.checked{background:var(--green);border-color:var(--green);color:#fff;}
+  .todo-text{flex:1;font-size:14px;}
+  .todo-item.done .todo-text{color:var(--muted);text-decoration:line-through;}
+  .todo-meta{font-size:11px;color:var(--muted);white-space:nowrap;}
+  .todo-delete{color:var(--red);font-size:13px;cursor:pointer;background:none;border:none;flex-shrink:0;}
+  .todo-empty{text-align:center;color:var(--muted);font-size:13px;padding:30px;}
+
+  @media(max-width:560px){
+    .loaner-cols{grid-template-columns:1fr;}
+  }
+
   @media(max-width:900px){
     .board-cols{grid-template-columns:1fr;}
   }
@@ -206,6 +248,8 @@
 
 <div class="tabs">
   <div class="tab" onclick="switchTab('board',this)">🚗 工程ボード</div>
+  <div class="tab" onclick="switchTab('loaners',this)">🔑 代車管理</div>
+  <div class="tab" onclick="switchTab('todos',this)">✅ Todo</div>
   <div class="tab" onclick="switchTab('alerts',this)">🔔 フォロー <span class="tab-badge" id="alertBadge" style="display:none;">0</span></div>
   <div class="tab active" onclick="switchTab('records',this)">📋 整備記録</div>
   <div class="tab" onclick="switchTab('customers',this)">👤 お客様管理</div>
@@ -231,6 +275,36 @@
         <div class="board-col-body" id="colDone"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="page" id="page-loaners">
+  <div class="loaner-wrap">
+    <div class="board-toolbar">
+      <button class="primary-btn" onclick="openLoanerModal()">＋ 代車を登録</button>
+      <button class="primary-btn" style="background:var(--card);color:var(--text);border:1px solid var(--border);" onclick="loadAllData()">↻ 更新</button>
+    </div>
+    <div class="loaner-cols">
+      <div class="loaner-col status-out">
+        <div class="loaner-col-head"><span class="loaner-col-title">🚗 出動中</span><span class="board-col-count" id="countLoanerOut">0</span></div>
+        <div class="loaner-col-body" id="colLoanerOut"></div>
+      </div>
+      <div class="loaner-col status-ready">
+        <div class="loaner-col-head"><span class="loaner-col-title">🅿️ 待機中</span><span class="board-col-count" id="countLoanerReady">0</span></div>
+        <div class="loaner-col-body" id="colLoanerReady"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-todos">
+  <div class="todo-wrap">
+    <div class="todo-add-row">
+      <input class="todo-add-input" type="text" id="todoInput" placeholder="例：オイルフィルターを発注する" onkeydown="if(event.key==='Enter')addTodo()">
+      <button class="todo-add-btn" onclick="addTodo()">＋ 追加</button>
+    </div>
+    <div class="todo-list" id="todoList"></div>
+    <div class="todo-empty" id="todoEmpty" style="display:none;">タスクがありません</div>
   </div>
 </div>
 
@@ -412,6 +486,34 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="loanerModal" onclick="bgClose(event,'loanerModal')">
+  <div class="modal-box">
+    <div class="modal-title" id="loanerModalTitle">代車を登録</div>
+    <div class="form-group">
+      <label class="form-label">車名</label>
+      <input class="form-input" type="text" id="lCarName" placeholder="例：日産 ノート">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ナンバー</label>
+      <input class="form-input" type="text" id="lPlate" placeholder="例：横浜 500 あ 12-34">
+    </div>
+    <div class="form-group">
+      <label class="form-label">車検満了日</label>
+      <input class="form-input" type="date" id="lShaken">
+    </div>
+    <div class="form-group">
+      <label class="form-label">貸し出し先（任意）</label>
+      <input class="form-input" type="text" id="lLendTo" placeholder="例：田中様">
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ（任意）</label>
+      <input class="form-input" type="text" id="lNote" placeholder="例：ガソリン満タン返却">
+    </div>
+    <button class="submit-btn" id="saveLoanerBtn" onclick="saveLoaner()">保存する</button>
+    <button class="cancel-btn" onclick="closeModal('loanerModal')">キャンセル</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -420,6 +522,8 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbyiTH08NY9jQE04CuSZ8NLf
 
 let customers = [];
 let boardItems = [];
+let loaners = [];
+let todos = [];
 
 let records = [];
 let activeFilter='all';
@@ -451,8 +555,10 @@ async function loadAllData(){
       customers=(json.customers||[]).map(c=>({...c,cars:Array.isArray(c.cars)?c.cars:[]}));
       records=(json.records||[]).map(r=>({...r,id:Number(r.id),customerId:Number(r.customerId),odo:r.odo?Number(r.odo):null,lineSent:r.lineSent===true||r.lineSent==='TRUE'}));
       boardItems=(json.board||[]).map(b=>({...b,id:Number(b.id),customerId:Number(b.customerId)}));
+      loaners=(json.loaners||[]).map(l=>({...l,id:Number(l.id)}));
+      todos=(json.todos||[]).map(t=>({...t,id:Number(t.id),done:t.done===true||t.done==='TRUE'}));
       setSyncStatus('synced','スプレッドシートと同期済み');
-      renderRecords();renderCustomers();renderAlerts();renderBoard();
+      renderRecords();renderCustomers();renderAlerts();renderBoard();renderLoaners();renderTodos();
     } else {
       setSyncStatus('error','読み込みエラー');
       showToast('読み込みに失敗しました');
@@ -588,6 +694,8 @@ function switchTab(name,el){
   document.getElementById('page-'+name).classList.add('active');
   closeDetail();
   if(name==='board')renderBoard();
+  else if(name==='loaners')renderLoaners();
+  else if(name==='todos')renderTodos();
   else if(name==='alerts')renderAlerts();
   else if(name==='customers')renderCustomers();
   else renderRecords();
@@ -947,6 +1055,176 @@ async function saveRecord(){
   }
   isSaving=false;
   btn.disabled=false;btn.textContent='保存してLINEプレビューを見る';
+}
+
+// ── 代車管理 ──
+let editingLoanerId=null;
+
+function daysUntilLoaner(s){if(!s)return null;return Math.ceil((new Date(s)-new Date())/86400000);}
+
+function renderLoaners(){
+  const out=loaners.filter(l=>l.status==='out');
+  const ready=loaners.filter(l=>l.status!=='out');
+  document.getElementById('countLoanerOut').textContent=out.length;
+  document.getElementById('countLoanerReady').textContent=ready.length;
+
+  const renderCard=(l)=>{
+    const days=daysUntilLoaner(l.shaken);
+    let dueBadge='';
+    if(days!==null){
+      const cls=days<0?'over':days<30?'soon':'ok';
+      const label=days<0?`車検 ${Math.abs(days)}日超過`:`車検 残り${days}日`;
+      dueBadge=`<span class="loaner-due ${cls}">${label}</span>`;
+    }
+    const moveLabel=l.status==='out'?'戻ってきた（待機中に）→':'貸し出す（出動中に）→';
+    const moveStatus=l.status==='out'?'ready':'out';
+    return `<div class="loaner-card" onclick="openLoanerDetail(${l.id})">
+      <div class="loaner-card-name">${l.carName||'—'}</div>
+      <div class="loaner-card-sub">${l.plate||''}</div>
+      ${l.status==='out'&&l.lendTo?`<div class="loaner-card-sub">貸出先：${l.lendTo}</div>`:''}
+      ${dueBadge}
+      <div class="loaner-card-move" onclick="event.stopPropagation()">
+        <button class="loaner-move-btn" onclick="toggleLoanerStatus(${l.id},'${moveStatus}')">${moveLabel}</button>
+      </div>
+    </div>`;
+  };
+
+  document.getElementById('colLoanerOut').innerHTML=out.length?out.map(renderCard).join(''):'<div class="board-empty">なし</div>';
+  document.getElementById('colLoanerReady').innerHTML=ready.length?ready.map(renderCard).join(''):'<div class="board-empty">なし</div>';
+}
+
+async function toggleLoanerStatus(id,newStatus){
+  const l=loaners.find(x=>x.id===id); if(!l)return;
+  l.status=newStatus;
+  if(newStatus==='ready') l.lendTo='';
+  renderLoaners();
+  isSaving=true;
+  try{ await gasPost({action:'saveLoaner',loaner:l}); }
+  catch(e){ showToast('更新の保存に失敗しました'); }
+  isSaving=false;
+}
+
+function openLoanerModal(editId=null){
+  editingLoanerId=editId;
+  document.getElementById('loanerModalTitle').textContent=editId?'代車情報を編集':'代車を登録';
+  if(editId){
+    const l=loaners.find(x=>x.id===editId);
+    document.getElementById('lCarName').value=l.carName||'';
+    document.getElementById('lPlate').value=l.plate||'';
+    document.getElementById('lShaken').value=l.shaken||'';
+    document.getElementById('lLendTo').value=l.lendTo||'';
+    document.getElementById('lNote').value=l.note||'';
+  }else{
+    ['lCarName','lPlate','lShaken','lLendTo','lNote'].forEach(id=>document.getElementById(id).value='');
+  }
+  document.getElementById('loanerModal').classList.add('open');
+}
+
+async function saveLoaner(){
+  const carName=document.getElementById('lCarName').value.trim();
+  if(!carName){showToast('車名を入力してください');return;}
+  const data={
+    id:editingLoanerId||Date.now(),
+    carName,
+    plate:document.getElementById('lPlate').value.trim(),
+    shaken:document.getElementById('lShaken').value,
+    lendTo:document.getElementById('lLendTo').value.trim(),
+    note:document.getElementById('lNote').value.trim(),
+    status:editingLoanerId?(loaners.find(x=>x.id===editingLoanerId).status):'ready'
+  };
+  const btn=document.getElementById('saveLoanerBtn');
+  btn.disabled=true;btn.textContent='保存中...';
+  isSaving=true;
+  try{
+    await gasPost({action:'saveLoaner',loaner:data});
+    if(editingLoanerId){Object.assign(loaners.find(x=>x.id===editingLoanerId),data);}
+    else{loaners.push(data);}
+    closeModal('loanerModal');renderLoaners();
+    showToast(editingLoanerId?'更新しました ✓':'登録しました ✓');
+  }catch(e){ showToast('保存に失敗しました'); }
+  isSaving=false;
+  btn.disabled=false;btn.textContent='保存する';
+}
+
+function openLoanerDetail(id){
+  const l=loaners.find(x=>x.id===id); if(!l)return;
+  const days=daysUntilLoaner(l.shaken);
+  document.getElementById('dpTitle').textContent=l.carName||'代車';
+  document.getElementById('dpBody').innerHTML=`
+    <div class="detail-section">
+      <div class="detail-row"><span class="detail-key">車名</span><span class="detail-val">${l.carName||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">ナンバー</span><span class="detail-val">${l.plate||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">車検満了日</span><span class="detail-val">${l.shaken?fmtDate(l.shaken):'—'}${days!==null?`<span style="font-size:11px;margin-left:6px;color:${days<0?'var(--red)':days<30?'var(--amber)':'var(--green)'}">${days<0?`(${Math.abs(days)}日超過)`:`(残${days}日)`}</span>`:''}</span></div>
+      <div class="detail-row"><span class="detail-key">状態</span><span class="detail-val">${l.status==='out'?'出動中':'待機中'}</span></div>
+      ${l.status==='out'&&l.lendTo?`<div class="detail-row"><span class="detail-key">貸出先</span><span class="detail-val">${l.lendTo}</span></div>`:''}
+      ${l.note?`<div class="note-box">${l.note}</div>`:''}
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="line-copy-btn" style="flex:1;" onclick="openLoanerModal(${l.id})">✏️ 編集</button>
+      <button onclick="deleteLoaner(${l.id})" style="background:transparent;border:1px solid rgba(224,82,82,0.3);color:var(--red);border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;">削除</button>
+    </div>`;
+  document.getElementById('detailPanel').classList.add('open');
+}
+
+async function deleteLoaner(id){
+  if(!confirm('この代車を削除しますか？'))return;
+  loaners=loaners.filter(x=>x.id!==id);
+  closeDetail();renderLoaners();
+  isSaving=true;
+  try{ await gasPost({action:'deleteLoaner',id}); }
+  catch(e){ showToast('削除の同期に失敗しました'); }
+  isSaving=false;
+}
+
+// ── Todoリスト ──
+function renderTodos(){
+  const empty=document.getElementById('todoEmpty');
+  const list=document.getElementById('todoList');
+  if(!todos.length){ list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  const sorted=[...todos].sort((a,b)=>{
+    if(a.done!==b.done) return a.done?1:-1;
+    return new Date(b.timestamp||0)-new Date(a.timestamp||0);
+  });
+  list.innerHTML=sorted.map(t=>`
+    <div class="todo-item ${t.done?'done':''}">
+      <div class="todo-checkbox ${t.done?'checked':''}" onclick="toggleTodo(${t.id})">${t.done?'✓':''}</div>
+      <div class="todo-text">${t.text}</div>
+      <button class="todo-delete" onclick="deleteTodo(${t.id})">✕</button>
+    </div>`).join('');
+}
+
+async function addTodo(){
+  const input=document.getElementById('todoInput');
+  const text=input.value.trim();
+  if(!text)return;
+  const todo={id:Date.now(),text,done:false,timestamp:new Date().toISOString()};
+  input.value='';
+  todos.unshift(todo);
+  renderTodos();
+  isSaving=true;
+  try{ await gasPost({action:'saveTodo',todo}); }
+  catch(e){ showToast('保存に失敗しました'); }
+  isSaving=false;
+}
+
+async function toggleTodo(id){
+  const t=todos.find(x=>x.id===id); if(!t)return;
+  t.done=!t.done;
+  renderTodos();
+  isSaving=true;
+  try{ await gasPost({action:'saveTodo',todo:t}); }
+  catch(e){ showToast('更新の保存に失敗しました'); }
+  isSaving=false;
+}
+
+async function deleteTodo(id){
+  todos=todos.filter(x=>x.id!==id);
+  renderTodos();
+  isSaving=true;
+  try{ await gasPost({action:'deleteTodo',id}); }
+  catch(e){ showToast('削除の同期に失敗しました'); }
+  isSaving=false;
 }
 
 function renderCustomers(){
