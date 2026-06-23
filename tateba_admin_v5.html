@@ -633,7 +633,7 @@ function renderAlerts(){
       </div>
       <div class="alert-right">
         <div class="alert-date">${fmtDate(a.date)}</div>
-        <button class="line-mini-btn" onclick="event.stopPropagation();copyAndOpenLine('${encodeURIComponent(msg)}')">💬 LINE送信</button>
+        <button class="line-mini-btn" onclick="event.stopPropagation();copyAndOpenLine('${encodeURIComponent(msg)}')">📋 コピー</button>
       </div>
     </div>`;
   }).join('');
@@ -652,8 +652,7 @@ function buildAlertMsg(a){
 function copyAndOpenLine(encodedMsg){
   const msg=decodeURIComponent(encodedMsg);
   navigator.clipboard.writeText(msg).then(()=>{
-    showToast('メッセージをコピーしました ✓');
-    setTimeout(()=>window.open('https://line.me/R/ti/p/@350uyhfi','_blank'),500);
+    showToast('メッセージをコピーしました ✓ LINE公式アプリに貼り付けてください');
   });
 }
 
@@ -679,8 +678,7 @@ function openAlertDetail(custId,label){
       <div class="line-preview-label">💬 LINEメッセージ</div>
       <div style="background:#86b5d1;padding:12px;border-radius:8px;"><div class="line-bubble">${msg.replace(/\n/g,'<br>')}</div></div>
       <div class="line-actions">
-        <button class="line-copy-btn" onclick="navigator.clipboard.writeText(\`${msg.replace(/`/g,'\\`')}\`).then(()=>showToast('コピーしました ✓'))">📋 コピー</button>
-        <button class="line-open-btn" onclick="window.open('https://line.me/R/ti/p/@350uyhfi','_blank')">LINEを開く</button>
+        <button class="line-copy-btn" style="flex:none;width:100%;" onclick="navigator.clipboard.writeText(\`${msg.replace(/`/g,'\\`')}\`).then(()=>showToast('コピーしました ✓ LINE公式アプリに貼り付けてください'))">📋 コピーする</button>
       </div>
     </div>
     <button onclick="openCustomerModal(${c.id})" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:10px;font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;">✏️ 期限日を編集</button>`;
@@ -940,8 +938,7 @@ function openRecordDetail(id,showLine=false){
       <div class="line-preview-label">💬 LINEメッセージ ${r.lineSent?'<span style="color:var(--green);font-size:11px;margin-left:8px;">✓ 送信済み</span>':'<span style="color:var(--amber);font-size:11px;margin-left:8px;">未送信</span>'}</div>
       <div style="background:#86b5d1;padding:12px;border-radius:8px;"><div class="line-bubble">${msg.replace(/\n/g,'<br>')}</div></div>
       <div class="line-actions">
-        <button class="line-copy-btn" onclick="navigator.clipboard.writeText(\`${msg.replace(/`/g,'\\`')}\`).then(()=>showToast('コピーしました ✓'))">📋 コピー</button>
-        <button class="line-open-btn" onclick="markLineSent(${r.id});window.open('https://line.me/R/ti/p/@350uyhfi','_blank')">LINEを開く</button>
+        <button class="line-copy-btn" style="flex:none;width:100%;" onclick="navigator.clipboard.writeText(\`${msg.replace(/`/g,'\\`')}\`).then(()=>{markLineSent(${r.id});showToast('コピーしました ✓ LINE公式アプリに貼り付けてください')})">📋 コピーする</button>
       </div>
       ${r.lineSent?`<button onclick="markLineUnsent(${r.id})" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px;font-size:12px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-top:8px;">未送信に戻す</button>`:''}
     </div>
