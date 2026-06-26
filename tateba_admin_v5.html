@@ -67,6 +67,16 @@
   .loaner-due.ok{background:rgba(76,175,125,0.15);color:var(--green);}
   .loaner-due.soon{background:rgba(224,154,58,0.15);color:var(--amber);}
   .loaner-due.over{background:rgba(224,82,82,0.15);color:var(--red);}
+
+  /* 故障コードDB */
+  .dtc-wrap{padding:16px 20px;}
+  .dtc-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s;}
+  .dtc-card:hover{border-color:var(--gold-dim);}
+  .dtc-code{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:var(--gold);}
+  .dtc-model{font-size:12px;color:var(--muted);margin-left:8px;}
+  .dtc-tags{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;}
+  .dtc-tag{font-size:11px;background:rgba(100,170,255,0.12);color:#3a7bc8;border-radius:4px;padding:2px 8px;font-weight:700;}
+  .dtc-cause{font-size:13px;color:var(--text);margin-top:8px;white-space:pre-wrap;}
   .loaner-move-btn{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px;font-size:11px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
   .loaner-move-btn:hover{border-color:var(--gold);color:var(--gold);}
   /* loaner-due は代車自体の車検満了日表示に使用 */
@@ -248,6 +258,7 @@
 
 <div class="tabs">
   <div class="tab" onclick="switchTab('board',this)">🚗 工程ボード</div>
+  <div class="tab" onclick="switchTab('dtcs',this)">🔍 故障コード</div>
   <div class="tab" onclick="switchTab('loaners',this)">🔑 代車管理</div>
   <div class="tab" onclick="switchTab('todos',this)">✅ Todo</div>
   <div class="tab" onclick="switchTab('alerts',this)">🔔 フォロー <span class="tab-badge" id="alertBadge" style="display:none;">0</span></div>
@@ -274,6 +285,21 @@
         <div class="board-col-head"><span class="board-col-title">✅ 完了</span><span class="board-col-count" id="countDone">0</span></div>
         <div class="board-col-body" id="colDone"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-dtcs">
+  <div class="dtc-wrap">
+    <div class="toolbar" style="padding:0 0 16px;">
+      <input class="search-input" id="dtcSearch" placeholder="🔍 コード・型式・タグで検索（例：P0401, EGR, GB3）" oninput="renderDtcs()">
+      <button class="primary-btn" onclick="openDtcModal()">＋ 故障事例を登録</button>
+    </div>
+    <div id="dtcList"></div>
+    <div class="empty-state" id="dtcEmpty" style="display:none;">
+      <div style="font-size:36px;margin-bottom:10px;">🔍</div>
+      <div>まだ事例が登録されていません</div>
+      <div style="font-size:12px;margin-top:6px;">故障コードと原因を登録すると、次に似た事例が出た時に検索できます</div>
     </div>
   </div>
 </div>
@@ -408,6 +434,11 @@
       <textarea class="form-textarea" id="fNote" placeholder="例：0W-20 / 4L交換&#10;次回交換目安：94,000km"></textarea>
     </div>
     <div class="form-group">
+      <label class="form-label">使用部品（任意・カンマ区切りで複数可）</label>
+      <input class="form-input" type="text" id="fParts" placeholder="例：オルタネーター, ファンベルト">
+      <div id="fPartsHistory" style="margin-top:6px;"></div>
+    </div>
+    <div class="form-group">
       <label class="form-label">次回おすすめ作業（任意）</label>
       <input class="form-input" type="text" id="fNext" placeholder="例：エアコンフィルター交換をおすすめします">
     </div>
@@ -441,6 +472,7 @@
       <div class="car-list" id="carList"></div>
       <div class="add-car-row" style="margin-top:10px;">
         <input class="add-car-input" type="text" id="newCarName" placeholder="車名（例：トヨタ ハイエース）">
+        <input class="add-car-input" type="text" id="newCarModel" placeholder="型式（例：GB3）" style="max-width:110px;">
         <input class="add-car-input" type="text" id="newCarPlate" placeholder="ナンバー">
         <button class="add-car-btn" onclick="addCarToList()">＋</button>
       </div>
@@ -514,6 +546,37 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="dtcModal" onclick="bgClose(event,'dtcModal')">
+  <div class="modal-box">
+    <div class="modal-title" id="dtcModalTitle">故障事例を登録</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">故障コード</label>
+        <input class="form-input" type="text" id="dtcCode" placeholder="例：P0401" style="font-family:'Inter',sans-serif;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">型式（任意）</label>
+        <input class="form-input" type="text" id="dtcCarModel" placeholder="例：GB3">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">タグ（カンマ区切りで複数可）</label>
+      <input class="form-input" type="text" id="dtcTags" placeholder="例：EGRバルブ, EGR詰まり, 差圧ホース">
+    </div>
+    <div class="form-group">
+      <label class="form-label">原因・対処内容</label>
+      <textarea class="form-textarea" id="dtcCause" placeholder="例：EGRバルブ詰まりにより発生。バルブ清掃＋差圧ホース交換で解消。" style="min-height:90px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ（任意）</label>
+      <input class="form-input" type="text" id="dtcNote" placeholder="例：キャンター 2tダンプ、走行12万km時">
+    </div>
+    <button class="submit-btn" id="saveDtcBtn" onclick="saveDtc()">保存する</button>
+    <button class="cancel-btn" onclick="closeModal('dtcModal')">キャンセル</button>
+    <button id="deleteDtcBtn" onclick="deleteDtc(editingDtcId)" style="display:none;width:100%;background:transparent;border:1px solid rgba(224,82,82,0.3);color:var(--red);border-radius:8px;padding:10px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-top:8px;">この事例を削除</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -524,6 +587,7 @@ let customers = [];
 let boardItems = [];
 let loaners = [];
 let todos = [];
+let dtcs = [];
 
 let records = [];
 let activeFilter='all';
@@ -557,8 +621,9 @@ async function loadAllData(){
       boardItems=(json.board||[]).map(b=>({...b,id:Number(b.id),customerId:Number(b.customerId)}));
       loaners=(json.loaners||[]).map(l=>({...l,id:Number(l.id)}));
       todos=(json.todos||[]).map(t=>({...t,id:Number(t.id),done:t.done===true||t.done==='TRUE'}));
+      dtcs=(json.dtcs||[]).map(d=>({...d,id:Number(d.id)}));
       setSyncStatus('synced','スプレッドシートと同期済み');
-      renderRecords();renderCustomers();renderAlerts();renderBoard();renderLoaners();renderTodos();
+      renderRecords();renderCustomers();renderAlerts();renderBoard();renderLoaners();renderTodos();renderDtcs();
     } else {
       setSyncStatus('error','読み込みエラー');
       showToast('読み込みに失敗しました');
@@ -704,6 +769,7 @@ function switchTab(name,el){
   document.getElementById('page-'+name).classList.add('active');
   closeDetail();
   if(name==='board')renderBoard();
+  else if(name==='dtcs')renderDtcs();
   else if(name==='loaners')renderLoaners();
   else if(name==='todos')renderTodos();
   else if(name==='alerts')renderAlerts();
@@ -935,7 +1001,7 @@ function openRecordDetail(id,showLine=false){
     <div class="detail-section">
       <div class="detail-section-title">お客様・車両</div>
       <div class="detail-row"><span class="detail-key">お客様名</span><span class="detail-val">${r.customerName||'—'}</span></div>
-      <div class="detail-row"><span class="detail-key">車名</span><span class="detail-val">${r.carName||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">車名</span><span class="detail-val">${r.carName||'—'}${r.model?` [${r.model}]`:''}</span></div>
       <div class="detail-row"><span class="detail-key">ナンバー</span><span class="detail-val">${r.plate||'—'}</span></div>
       <div class="detail-row"><span class="detail-key">作業日</span><span class="detail-val">${fmtDate(r.date)}</span></div>
       <div class="detail-row"><span class="detail-key">走行距離</span><span class="detail-val">${r.odo?Number(r.odo).toLocaleString()+' km':'—'}</span></div>
@@ -943,6 +1009,7 @@ function openRecordDetail(id,showLine=false){
     <div class="detail-section">
       <div class="detail-section-title">作業内容</div>
       <div class="detail-row"><span class="detail-key">種別</span><span class="detail-val">${r.type||'—'}</span></div>
+      ${r.parts?`<div class="detail-row"><span class="detail-key">使用部品</span><span class="detail-val">${r.parts}</span></div>`:''}
       ${r.note?`<div class="note-box">${String(r.note).replace(/\n/g,'<br>')}</div>`:''}
       ${r.next?`<div class="note-box" style="margin-top:8px;border-left:3px solid var(--gold);padding-left:12px;">💡 ${r.next}</div>`:''}
     </div>
@@ -1003,6 +1070,8 @@ function openRecordModal(){
   document.getElementById('fOdo').value='';
   document.getElementById('fNote').value='';
   document.getElementById('fNext').value='';
+  document.getElementById('fParts').value='';
+  document.getElementById('fPartsHistory').innerHTML='';
   document.getElementById('fCustomerSearch').value='';
   document.getElementById('autoFillHint').style.display='none';
   document.getElementById('recordModal').classList.add('open');
@@ -1033,9 +1102,37 @@ function onCarSelect(){
   const custId=Number(document.getElementById('fCustomerSelect').value);
   const carIdx=document.getElementById('fCarSelect').value;
   const c=customers.find(x=>x.id===custId);
-  if(!c||carIdx===''){document.getElementById('fPlate').value='';return;}
-  document.getElementById('fPlate').value=c.cars[Number(carIdx)].plate;
+  if(!c||carIdx===''){document.getElementById('fPlate').value='';document.getElementById('fPartsHistory').innerHTML='';return;}
+  const car=c.cars[Number(carIdx)];
+  document.getElementById('fPlate').value=car.plate;
   document.getElementById('autoFillHint').style.display='block';
+  showPartsHistoryForModel(car.model);
+}
+
+// ── 同型式の部品交換履歴を表示 ──
+function showPartsHistoryForModel(model){
+  const wrap=document.getElementById('fPartsHistory');
+  if(!model){wrap.innerHTML='';return;}
+  const sameModelRecords=records.filter(r=>r.model===model && r.parts);
+  if(!sameModelRecords.length){wrap.innerHTML=`<div style="font-size:11px;color:var(--muted);">この型式（${model}）の過去の部品交換履歴はまだありません</div>`;return;}
+  // 部品名の出現回数を集計
+  const partCounts={};
+  sameModelRecords.forEach(r=>{
+    (r.parts||'').split(',').map(p=>p.trim()).filter(Boolean).forEach(p=>{
+      partCounts[p]=(partCounts[p]||0)+1;
+    });
+  });
+  const sorted=Object.entries(partCounts).sort((a,b)=>b[1]-a[1]);
+  wrap.innerHTML=`<div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:4px;">📦 ${model} の過去の使用部品（${sameModelRecords.length}件中）</div>` +
+    sorted.map(([p,n])=>`<span style="display:inline-block;background:rgba(201,169,75,0.12);color:var(--gold);border-radius:4px;padding:2px 8px;font-size:11px;margin:0 4px 4px 0;cursor:pointer;" onclick="addPartFromHistory('${p.replace(/'/g,"\\'")}')">${p}（${n}回）</span>`).join('');
+}
+
+function addPartFromHistory(part){
+  const input=document.getElementById('fParts');
+  const current=input.value.trim();
+  const parts=current?current.split(',').map(p=>p.trim()):[];
+  if(!parts.includes(part)){ parts.push(part); }
+  input.value=parts.join(', ');
 }
 async function saveRecord(){
   const custId=Number(document.getElementById('fCustomerSelect').value);
@@ -1044,8 +1141,8 @@ async function saveRecord(){
   if(!custId){showToast('お客様を選択してください');return;}
   if(!date){showToast('作業日を入力してください');return;}
   const c=customers.find(x=>x.id===custId);
-  const car=(c&&carIdx!=='')?c.cars[Number(carIdx)]:{name:'',plate:''};
-  const rec={id:Date.now(),customerId:custId,customerName:c?c.name:'',carName:car.name,plate:car.plate,type:document.getElementById('fType').value,date,odo:document.getElementById('fOdo').value?Number(document.getElementById('fOdo').value):null,note:document.getElementById('fNote').value.trim(),next:document.getElementById('fNext').value.trim(),timestamp:new Date().toISOString()};
+  const car=(c&&carIdx!=='')?c.cars[Number(carIdx)]:{name:'',plate:'',model:''};
+  const rec={id:Date.now(),customerId:custId,customerName:c?c.name:'',carName:car.name,plate:car.plate,model:car.model||'',parts:document.getElementById('fParts').value.trim(),type:document.getElementById('fType').value,date,odo:document.getElementById('fOdo').value?Number(document.getElementById('fOdo').value):null,note:document.getElementById('fNote').value.trim(),next:document.getElementById('fNext').value.trim(),timestamp:new Date().toISOString()};
 
   const btn=document.getElementById('saveRecordBtn');
   btn.disabled=true;btn.textContent='保存中...';
@@ -1236,6 +1333,86 @@ async function deleteTodo(id){
   isSaving=false;
 }
 
+// ── 故障コードデータベース ──
+let editingDtcId=null;
+
+function renderDtcs(){
+  const q=document.getElementById('dtcSearch').value.toLowerCase();
+  const list=dtcs.filter(d=>{
+    if(!q)return true;
+    const haystack=`${d.code||''} ${d.carModel||''} ${d.tags||''} ${d.cause||''}`.toLowerCase();
+    return haystack.includes(q);
+  }).sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0));
+
+  const wrap=document.getElementById('dtcList');
+  const empty=document.getElementById('dtcEmpty');
+  if(!list.length){wrap.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+
+  wrap.innerHTML=list.map(d=>{
+    const tags=(d.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+    return `<div class="dtc-card" onclick="openDtcModal(${d.id})">
+      <span class="dtc-code">${d.code||'—'}</span>${d.carModel?`<span class="dtc-model">[${d.carModel}]</span>`:''}
+      ${tags.length?`<div class="dtc-tags">${tags.map(t=>`<span class="dtc-tag">${t}</span>`).join('')}</div>`:''}
+      ${d.cause?`<div class="dtc-cause">${d.cause.replace(/\n/g,'<br>')}</div>`:''}
+      ${d.note?`<div style="font-size:11px;color:var(--muted);margin-top:6px;">📝 ${d.note}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openDtcModal(editId=null){
+  editingDtcId=editId;
+  document.getElementById('dtcModalTitle').textContent=editId?'故障事例を編集':'故障事例を登録';
+  document.getElementById('deleteDtcBtn').style.display=editId?'block':'none';
+  if(editId){
+    const d=dtcs.find(x=>x.id===editId);
+    document.getElementById('dtcCode').value=d.code||'';
+    document.getElementById('dtcCarModel').value=d.carModel||'';
+    document.getElementById('dtcTags').value=d.tags||'';
+    document.getElementById('dtcCause').value=d.cause||'';
+    document.getElementById('dtcNote').value=d.note||'';
+  }else{
+    ['dtcCode','dtcCarModel','dtcTags','dtcCause','dtcNote'].forEach(id=>document.getElementById(id).value='');
+  }
+  document.getElementById('dtcModal').classList.add('open');
+}
+
+async function saveDtc(){
+  const code=document.getElementById('dtcCode').value.trim();
+  if(!code){showToast('故障コードを入力してください');return;}
+  const data={
+    id:editingDtcId||Date.now(),
+    code,
+    carModel:document.getElementById('dtcCarModel').value.trim(),
+    tags:document.getElementById('dtcTags').value.trim(),
+    cause:document.getElementById('dtcCause').value.trim(),
+    note:document.getElementById('dtcNote').value.trim(),
+    timestamp:editingDtcId?(dtcs.find(x=>x.id===editingDtcId).timestamp):new Date().toISOString()
+  };
+  const btn=document.getElementById('saveDtcBtn');
+  btn.disabled=true;btn.textContent='保存中...';
+  isSaving=true;
+  try{
+    await gasPost({action:'saveDtc',dtc:data});
+    if(editingDtcId){Object.assign(dtcs.find(x=>x.id===editingDtcId),data);}
+    else{dtcs.push(data);}
+    closeModal('dtcModal');renderDtcs();
+    showToast(editingDtcId?'更新しました ✓':'登録しました ✓');
+  }catch(e){ showToast('保存に失敗しました'); }
+  isSaving=false;
+  btn.disabled=false;btn.textContent='保存する';
+}
+
+async function deleteDtc(id){
+  if(!confirm('この事例を削除しますか？'))return;
+  dtcs=dtcs.filter(x=>x.id!==id);
+  closeModal('dtcModal');renderDtcs();
+  isSaving=true;
+  try{ await gasPost({action:'deleteDtc',id}); }
+  catch(e){ showToast('削除の同期に失敗しました'); }
+  isSaving=false;
+}
+
 function renderCustomers(){
   const q=document.getElementById('custSearch').value.toLowerCase();
   const list=customers.filter(c=>!q||c.name.toLowerCase().includes(q));
@@ -1317,8 +1494,8 @@ function openCustomerModal(editId=null){
   renderTempCars();
   document.getElementById('customerModal').classList.add('open');
 }
-function renderTempCars(){document.getElementById('carList').innerHTML=tempCars.map((car,i)=>`<div class="car-item"><div class="car-item-info">${car.name}<small>${car.plate}</small></div><button class="delete-link" onclick="removeTempCar(${i})">✕</button></div>`).join('');}
-function addCarToList(){const name=document.getElementById('newCarName').value.trim();const plate=document.getElementById('newCarPlate').value.trim();if(!name){showToast('車名を入力してください');return;}tempCars.push({name,plate});document.getElementById('newCarName').value='';document.getElementById('newCarPlate').value='';renderTempCars();}
+function renderTempCars(){document.getElementById('carList').innerHTML=tempCars.map((car,i)=>`<div class="car-item"><div class="car-item-info">${car.name}${car.model?`　<span style="color:var(--gold);font-weight:700;">[${car.model}]</span>`:''}<small>${car.plate||''}</small></div><button class="delete-link" onclick="removeTempCar(${i})">✕</button></div>`).join('');}
+function addCarToList(){const name=document.getElementById('newCarName').value.trim();const model=document.getElementById('newCarModel').value.trim();const plate=document.getElementById('newCarPlate').value.trim();if(!name){showToast('車名を入力してください');return;}tempCars.push({name,model,plate});document.getElementById('newCarName').value='';document.getElementById('newCarModel').value='';document.getElementById('newCarPlate').value='';renderTempCars();}
 function removeTempCar(i){tempCars.splice(i,1);renderTempCars();}
 
 async function saveCustomer(){
@@ -1327,9 +1504,11 @@ async function saveCustomer(){
   // 「＋」を押し忘れて車名だけ入力されている場合は自動的にリストに追加する
   const pendingCarName=document.getElementById('newCarName').value.trim();
   if(pendingCarName){
+    const pendingModel=document.getElementById('newCarModel').value.trim();
     const pendingPlate=document.getElementById('newCarPlate').value.trim();
-    tempCars.push({name:pendingCarName,plate:pendingPlate});
+    tempCars.push({name:pendingCarName,model:pendingModel,plate:pendingPlate});
     document.getElementById('newCarName').value='';
+    document.getElementById('newCarModel').value='';
     document.getElementById('newCarPlate').value='';
     renderTempCars();
   }
