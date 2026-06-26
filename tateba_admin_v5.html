@@ -434,9 +434,14 @@
       <textarea class="form-textarea" id="fNote" placeholder="例：0W-20 / 4L交換&#10;次回交換目安：94,000km"></textarea>
     </div>
     <div class="form-group">
-      <label class="form-label">使用部品（任意・カンマ区切りで複数可）</label>
-      <input class="form-input" type="text" id="fParts" placeholder="例：オルタネーター, ファンベルト">
-      <div id="fPartsHistory" style="margin-top:6px;"></div>
+      <label class="form-label">使用部品（任意）</label>
+      <div id="fPartsList" class="car-list" style="margin-top:0;margin-bottom:8px;"></div>
+      <div class="add-car-row">
+        <input class="add-car-input" type="text" id="newPartName" placeholder="部品名（例：オルタネーター）">
+        <input class="add-car-input" type="text" id="newPartNumber" placeholder="品番（例：31100-XXX）">
+        <button class="add-car-btn" onclick="addPartToList()">＋</button>
+      </div>
+      <div id="fPartsHistory" style="margin-top:8px;"></div>
     </div>
     <div class="form-group">
       <label class="form-label">次回おすすめ作業（任意）</label>
@@ -588,6 +593,7 @@ let boardItems = [];
 let loaners = [];
 let todos = [];
 let dtcs = [];
+let tempParts = [];
 
 let records = [];
 let activeFilter='all';
@@ -1009,7 +1015,7 @@ function openRecordDetail(id,showLine=false){
     <div class="detail-section">
       <div class="detail-section-title">作業内容</div>
       <div class="detail-row"><span class="detail-key">種別</span><span class="detail-val">${r.type||'—'}</span></div>
-      ${r.parts?`<div class="detail-row"><span class="detail-key">使用部品</span><span class="detail-val">${r.parts}</span></div>`:''}
+      ${r.parts?`<div class="detail-row" style="align-items:flex-start;"><span class="detail-key">使用部品</span><span class="detail-val">${parsePartsField(r.parts).map(p=>`${p.name}${p.number?`（${p.number}）`:''}`).join('<br>')}</span></div>`:''}
       ${r.note?`<div class="note-box">${String(r.note).replace(/\n/g,'<br>')}</div>`:''}
       ${r.next?`<div class="note-box" style="margin-top:8px;border-left:3px solid var(--gold);padding-left:12px;">💡 ${r.next}</div>`:''}
     </div>
@@ -1070,7 +1076,8 @@ function openRecordModal(){
   document.getElementById('fOdo').value='';
   document.getElementById('fNote').value='';
   document.getElementById('fNext').value='';
-  document.getElementById('fParts').value='';
+  tempParts=[];
+  renderTempParts();
   document.getElementById('fPartsHistory').innerHTML='';
   document.getElementById('fCustomerSearch').value='';
   document.getElementById('autoFillHint').style.display='none';
@@ -1109,30 +1116,59 @@ function onCarSelect(){
   showPartsHistoryForModel(car.model);
 }
 
+// ── 使用部品リスト（部品名＋品番） ──
+function renderTempParts(){
+  document.getElementById('fPartsList').innerHTML=tempParts.map((p,i)=>`
+    <div class="car-item">
+      <div class="car-item-info">${p.name}${p.number?`<small>品番：${p.number}</small>`:''}</div>
+      <button class="delete-link" onclick="removeTempPart(${i})">✕</button>
+    </div>`).join('');
+}
+function addPartToList(){
+  const name=document.getElementById('newPartName').value.trim();
+  const number=document.getElementById('newPartNumber').value.trim();
+  if(!name){showToast('部品名を入力してください');return;}
+  tempParts.push({name,number});
+  document.getElementById('newPartName').value='';
+  document.getElementById('newPartNumber').value='';
+  renderTempParts();
+}
+function removeTempPart(i){ tempParts.splice(i,1); renderTempParts(); }
+
 // ── 同型式の部品交換履歴を表示 ──
+function parsePartsField(parts){
+  // parts は JSON文字列（新形式）またはカンマ区切り文字列（旧形式）の可能性がある
+  if(!parts)return[];
+  try{
+    const parsed=JSON.parse(parts);
+    if(Array.isArray(parsed))return parsed;
+  }catch(e){}
+  return parts.split(',').map(p=>({name:p.trim(),number:''})).filter(p=>p.name);
+}
+
 function showPartsHistoryForModel(model){
   const wrap=document.getElementById('fPartsHistory');
   if(!model){wrap.innerHTML='';return;}
   const sameModelRecords=records.filter(r=>r.model===model && r.parts);
   if(!sameModelRecords.length){wrap.innerHTML=`<div style="font-size:11px;color:var(--muted);">この型式（${model}）の過去の部品交換履歴はまだありません</div>`;return;}
-  // 部品名の出現回数を集計
+  // 部品名＋品番ごとの出現回数を集計
   const partCounts={};
   sameModelRecords.forEach(r=>{
-    (r.parts||'').split(',').map(p=>p.trim()).filter(Boolean).forEach(p=>{
-      partCounts[p]=(partCounts[p]||0)+1;
+    parsePartsField(r.parts).forEach(p=>{
+      const key=p.name+(p.number?`__${p.number}`:'');
+      if(!partCounts[key]) partCounts[key]={name:p.name,number:p.number,count:0};
+      partCounts[key].count++;
     });
   });
-  const sorted=Object.entries(partCounts).sort((a,b)=>b[1]-a[1]);
+  const sorted=Object.values(partCounts).sort((a,b)=>b.count-a.count);
   wrap.innerHTML=`<div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:4px;">📦 ${model} の過去の使用部品（${sameModelRecords.length}件中）</div>` +
-    sorted.map(([p,n])=>`<span style="display:inline-block;background:rgba(201,169,75,0.12);color:var(--gold);border-radius:4px;padding:2px 8px;font-size:11px;margin:0 4px 4px 0;cursor:pointer;" onclick="addPartFromHistory('${p.replace(/'/g,"\\'")}')">${p}（${n}回）</span>`).join('');
+    sorted.map(p=>`<span style="display:inline-block;background:rgba(201,169,75,0.12);color:var(--gold);border-radius:4px;padding:2px 8px;font-size:11px;margin:0 4px 4px 0;cursor:pointer;" onclick='addPartFromHistory(${JSON.stringify(p.name)},${JSON.stringify(p.number||"")})'>${p.name}${p.number?`(${p.number})`:''}　${p.count}回</span>`).join('');
 }
 
-function addPartFromHistory(part){
-  const input=document.getElementById('fParts');
-  const current=input.value.trim();
-  const parts=current?current.split(',').map(p=>p.trim()):[];
-  if(!parts.includes(part)){ parts.push(part); }
-  input.value=parts.join(', ');
+function addPartFromHistory(name,number){
+  if(tempParts.some(p=>p.name===name && p.number===number))return;
+  tempParts.push({name,number:number||''});
+  renderTempParts();
 }
 async function saveRecord(){
   const custId=Number(document.getElementById('fCustomerSelect').value);
@@ -1142,7 +1178,7 @@ async function saveRecord(){
   if(!date){showToast('作業日を入力してください');return;}
   const c=customers.find(x=>x.id===custId);
   const car=(c&&carIdx!=='')?c.cars[Number(carIdx)]:{name:'',plate:'',model:''};
-  const rec={id:Date.now(),customerId:custId,customerName:c?c.name:'',carName:car.name,plate:car.plate,model:car.model||'',parts:document.getElementById('fParts').value.trim(),type:document.getElementById('fType').value,date,odo:document.getElementById('fOdo').value?Number(document.getElementById('fOdo').value):null,note:document.getElementById('fNote').value.trim(),next:document.getElementById('fNext').value.trim(),timestamp:new Date().toISOString()};
+  const rec={id:Date.now(),customerId:custId,customerName:c?c.name:'',carName:car.name,plate:car.plate,model:car.model||'',parts:tempParts.length?JSON.stringify(tempParts):'',type:document.getElementById('fType').value,date,odo:document.getElementById('fOdo').value?Number(document.getElementById('fOdo').value):null,note:document.getElementById('fNote').value.trim(),next:document.getElementById('fNext').value.trim(),timestamp:new Date().toISOString()};
 
   const btn=document.getElementById('saveRecordBtn');
   btn.disabled=true;btn.textContent='保存中...';
